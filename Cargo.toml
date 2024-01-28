@@ -1,0 +1,23 @@
+[package]
+name = "ipfs_simulator"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dslab-core = { git = "https://github.com/osukhoroslov/dslab.git" }
+serde = { version = "1.0", features = ["derive"] }
+env_logger = "0.11"
+log = "0.4"
+num-traits = "0.2"
+num-derive = "0.4"
+rand_chacha = "0.3.1"
+rsa = "0.9.6"
+sha2 = "0.10.8"
+cid = "0.11.0"
+criterion = "0.5.1"
+
+[[bench]]
+name = "main_bench"
+harness = false

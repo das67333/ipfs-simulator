@@ -1,0 +1,10 @@
+behind nat? server/client
+rsa: public and private keys (long), signing data, struct representing connection?
+    in real network public keys are given to libp2p
+multiaddress protocols? /ipfs/dslab/<peer_id>
+
+fix crate cid/multihash (bug in v0 parsing)
+memory for kademlia rooting table: 256 * 20 * 4 * N = 20'480 * N
+    => 2GB (if 4 bytes per )
+
+global time for message latency? check
