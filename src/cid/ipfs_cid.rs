@@ -6,7 +6,7 @@ use super::{
 use cid::{multibase::Base as Multibase, multihash::Multihash, CidGeneric, Error, Version};
 use num_traits::FromPrimitive;
 
-#[derive(PartialEq, Eq)]
+#[derive(Copy, PartialEq, Eq, Clone, PartialOrd, Ord, Hash)]
 pub struct IpfsCid {
     cid: CidGeneric<MAX_HASH_LEN>,
 }
@@ -28,6 +28,10 @@ impl IpfsCid {
 
     pub fn from_str(s: &str) -> Result<Self, Error> {
         CidGeneric::try_from(s).map(|cid| Self { cid })
+    }
+
+    pub fn into_v1(self) -> Result<Self, Error> {
+        self.cid.into_v1().map(|cid| Self { cid })
     }
 
     pub fn multicodec(&self) -> Multicodec {

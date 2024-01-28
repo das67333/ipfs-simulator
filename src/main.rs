@@ -18,9 +18,18 @@ fn dev() -> Result<(), cid::Error> {
     use ipfs_simulator::cid::*;
 
     let ha = HashAlgorithms::new();
-    for cid in [
-        // IpfsCid::from_str("QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n")?,
-        IpfsCid::from_str("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")?,
+    let s_v0 = "QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
+    let s_v1 = "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
+    let cids = [
+        IpfsCid::from_str(s_v0)?,
+        IpfsCid::from_chunk(
+            CidVersion::V0,
+            Multicodec::DagPb,
+            MultihashType::Sha2_256,
+            &[],
+            &ha,
+        )?,
+        IpfsCid::from_str(s_v1)?,
         IpfsCid::from_chunk(
             CidVersion::V1,
             Multicodec::DagPb,
@@ -28,9 +37,12 @@ fn dev() -> Result<(), cid::Error> {
             &[],
             &ha,
         )?,
-    ] {
-        println!("{}", cid.to_string(Multibase::Base58Btc)?);
-        println!("{}", cid.to_string(Multibase::Base32Lower)?);
-    }
+    ];
+    let cids_v1 = cids.clone().map(|cid| cid.into_v1().unwrap());
+    assert!(cids_v1.iter().all(|cid| cid == &cids_v1[0]));
+    assert_eq!(cids[0].to_string(Multibase::Base58Btc)?, s_v0);
+    assert_eq!(cids[1].to_string(Multibase::Base58Btc)?, s_v0);
+    assert_eq!(cids[2].to_string(Multibase::Base32Lower)?, s_v1);
+    assert_eq!(cids[3].to_string(Multibase::Base32Lower)?, s_v1);
     Ok(())
 }
