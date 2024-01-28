@@ -1,1 +1,1 @@
-mod kademlia;
+pub mod kademlia;

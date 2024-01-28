@@ -1,27 +1,37 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use rand_chacha::{
+    rand_core::{RngCore, SeedableRng},
+    ChaCha20Rng,
+};
+use rsa::{RsaPrivateKey, RsaPublicKey};
 
-fn dev1(c: &mut Criterion) {
-    let f = |a: &str, b: &str| {
-        let mut s = a.to_owned();
-        s.extend(b.chars());
-        s
-    };
-    c.bench_function("dev1", |b| b.iter(|| f(black_box("hello"), black_box("world"))));
+const SEED: u64 = 42;
+
+fn rng_chacha(c: &mut Criterion) {
+    let mut rng = ChaCha20Rng::seed_from_u64(SEED);
+    c.bench_function("rng_chacha_u64", |b| b.iter(|| rng.next_u64()));
 }
 
-fn dev2(c: &mut Criterion) {
-    let f = |a: &str, b: &str| {
-        format!("{a}{b}")
-    };
-    c.bench_function("dev2", |b| b.iter(|| f(black_box("hello"), black_box("world"))));
+fn rsa_generate_keys<const RSA_BITS: usize>(c: &mut Criterion) {
+    let mut rng = ChaCha20Rng::seed_from_u64(SEED);
+    c.bench_function(&format!("rsa_generate_keys_{RSA_BITS}"), |b| {
+        b.iter(|| {
+            let priv_key =
+                RsaPrivateKey::new(&mut rng, RSA_BITS).expect("Failed to create RSA key");
+            let pub_key = RsaPublicKey::from(&priv_key);
+            (priv_key, pub_key)
+        })
+    });
 }
 
-fn dev3(c: &mut Criterion) {
-    let f = |a: &str, b: &str| {
-        a.to_owned().push_str(b)
-    };
-    c.bench_function("dev3", |b| b.iter(|| f(black_box("hello"), black_box("world"))));
-}
-
-criterion_group!(benches, dev1, dev2, dev3);
+criterion_group!(
+    benches,
+    rng_chacha,
+    rsa_generate_keys<2048>,
+    rsa_generate_keys<1024>,
+    rsa_generate_keys<512>,
+    rsa_generate_keys<256>,
+    rsa_generate_keys<128>,
+    rsa_generate_keys<64>,
+);
 criterion_main!(benches);

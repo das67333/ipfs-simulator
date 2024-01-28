@@ -1,10 +1,22 @@
 behind nat? server/client
 rsa: public and private keys (long), signing data, struct representing connection?
     in real network public keys are given to libp2p
-multiaddress protocols? /ipfs/dslab/<peer_id>
+multiaddress protocols?
+    /ipv4/1.2.3.4/tcp/3333/p2p/<peer_id> => /dslab/<peer_id>
 
 fix crate cid/multihash (bug in v0 parsing)
-memory for kademlia rooting table: 256 * 20 * 4 * N = 20'480 * N
-    => 2GB (if 4 bytes per )
+    cid crate - fork or insert into project?
+memory for kademlia rooting table: 256 * 20 * 32 * N = 2^14 * 10 * N
+    => 16GB ([address, peer_id] => 4+32 bytes)
 
 global time for message latency? check
+
+Benchmark results on Ryzen 7 4800hs (`cargo bench`):
+
+rng_chacha_u64 => 3.83 mcs
+rsa_generate_keys_2048 => 175 ms
+rsa_generate_keys_1024 => 20 ms
+rsa_generate_keys_512 => 3.0 ms
+rsa_generate_keys_256 => 760 mcs
+rsa_generate_keys_128 => 234 mcs
+rsa_generate_keys_64 => 180 mcs
