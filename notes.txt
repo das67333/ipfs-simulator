@@ -4,8 +4,10 @@ rsa: public and private keys (long), signing data, struct representing connectio
 multiaddress protocols?
     /ipv4/1.2.3.4/tcp/3333/p2p/<peer_id> => /dslab/<peer_id>
 
-memory for kademlia rooting table: 256 * 20 * 32 * N = 2^14 * 10 * N
-    => 16GB ([address, peer_id] => 4+32 bytes)
+memory for kademlia rooting table: 256 * 20 * 32 * N = 2^14 * 10 * N = 160KB * N
+    ([address, peer_id] => 4+32 bytes)
+up to 900 recently seen peers => 900 * 32 * N = 30KB * N
+    => ~20GB for 1e5 peers  !majority of buckets are empty
 
 global time for message latency? check
 

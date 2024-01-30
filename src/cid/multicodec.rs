@@ -1,11 +1,11 @@
-use num_derive::FromPrimitive;    
+use num_derive::FromPrimitive;
 
 /// Supported variants:
 ///
 /// https://github.com/multiformats/multicodec/blob/master/table.csv
-/// 
+///
 /// (with tag = "ipld" and status = "permanent";
-/// 
+///
 /// Ethereum*, Bitcoin*, Zcash* are excluded)
 #[derive(Debug, FromPrimitive)]
 pub enum Multicodec {
