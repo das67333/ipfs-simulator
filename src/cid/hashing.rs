@@ -1,15 +1,7 @@
 use super::MAX_HASH_LEN;
-use cid::multihash::Multihash;
+use cid::multihash::{Error, Multihash};
 use num_derive::FromPrimitive;
-use sha2::{Digest, Sha224, Sha256, Sha512, Sha512_224, Sha512_256};
-use std::collections::HashMap;
-
-// TODO: without heap allocations
-type HashAlg = fn(&[u8]) -> Vec<u8>;
-
-pub struct HashAlgorithms {
-    type_to_func: HashMap<MultihashType, HashAlg>,
-}
+use sha2::Digest;
 
 /// Supported variants:
 ///
@@ -18,7 +10,6 @@ pub struct HashAlgorithms {
 /// (with tag = "multihash" and status = "permanent")
 ///
 /// Currently only `Sha2_*` variants are implemented
-#[repr(u64)]
 #[derive(Debug, PartialEq, Eq, Hash, FromPrimitive)]
 pub enum MultihashType {
     Identity = 0x00,
@@ -41,58 +32,50 @@ pub enum MultihashType {
     PoseidonBls12_381A2Fc1 = 0xb401,
 }
 
-impl HashAlgorithms {
-    pub fn new() -> Self {
-        let mut type_to_func: HashMap<MultihashType, HashAlg> = HashMap::new();
-
-        type_to_func.insert(MultihashType::Identity, |data| data.to_vec());
-
-        type_to_func.insert(MultihashType::Sha2_224, |data| {
-            let mut hasher = Sha224::new();
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        });
-
-        type_to_func.insert(MultihashType::Sha2_256, |data| {
-            let mut hasher = Sha256::new();
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        });
-
-        type_to_func.insert(MultihashType::Sha2_256Trunc254Padded, |data| {
-            let mut hasher = Sha256::new();
-            hasher.update(data);
-            let mut v = hasher.finalize().to_vec();
-            *v.last_mut().unwrap() &= 0b00111111;
-            v
-        });
-
-        type_to_func.insert(MultihashType::Sha2_512, |data| {
-            let mut hasher = Sha512::new();
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        });
-
-        type_to_func.insert(MultihashType::Sha2_512_224, |data| {
-            let mut hasher = Sha512_224::new();
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        });
-
-        type_to_func.insert(MultihashType::Sha2_512_256, |data| {
-            let mut hasher = Sha512_256::new();
-            hasher.update(data);
-            hasher.finalize().to_vec()
-        });
-
-        Self { type_to_func }
-    }
-
-    pub fn digest(&self, hash_type: MultihashType, input: &[u8]) -> Multihash<MAX_HASH_LEN> {
-        let func = self
-            .type_to_func
-            .get(&hash_type)
-            .expect("This multihash code is either not supported or not implemented");
-        Multihash::wrap(hash_type as u64, &func(input)).unwrap()
+impl MultihashType {
+    // TODO: without heap allocations
+    pub fn digest(self, data: &[u8]) -> Result<Multihash<MAX_HASH_LEN>, Error> {
+        let digest = match self {
+            MultihashType::Identity => data.to_vec(),
+            MultihashType::Sha2_224 => {
+                let mut hasher = sha2::Sha224::new();
+                hasher.update(data);
+                hasher.finalize().to_vec()
+            }
+            MultihashType::Sha2_256 => {
+                let mut hasher = sha2::Sha256::new();
+                hasher.update(data);
+                hasher.finalize().to_vec()
+            }
+            MultihashType::Sha2_256Trunc254Padded => {
+                let mut hasher = sha2::Sha256::new();
+                hasher.update(data);
+                let mut v = hasher.finalize().to_vec();
+                *v.last_mut().unwrap() &= 0b00111111;
+                v
+            }
+            MultihashType::Sha2_384 => {
+                let mut hasher = sha2::Sha384::new();
+                hasher.update(data);
+                hasher.finalize().to_vec()
+            }
+            MultihashType::Sha2_512 => {
+                let mut hasher = sha2::Sha512::new();
+                hasher.update(data);
+                hasher.finalize().to_vec()
+            }
+            MultihashType::Sha2_512_224 => {
+                let mut hasher = sha2::Sha512_224::new();
+                hasher.update(data);
+                hasher.finalize().to_vec()
+            }
+            MultihashType::Sha2_512_256 => {
+                let mut hasher = sha2::Sha512_256::new();
+                hasher.update(data);
+                hasher.finalize().to_vec()
+            }
+            _ => unimplemented!(),
+        };
+        Multihash::wrap(self as u64, &digest)
     }
 }

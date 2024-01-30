@@ -17,7 +17,6 @@ fn main() {
 fn dev() -> Result<(), cid::Error> {
     use ipfs_simulator::cid::*;
 
-    let ha = HashAlgorithms::new();
     let s_v0 = "QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
     let s_v1 = "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
     let cids = [
@@ -27,7 +26,6 @@ fn dev() -> Result<(), cid::Error> {
             Multicodec::DagPb,
             MultihashType::Sha2_256,
             &[],
-            &ha,
         )?,
         IpfsCid::from_str(s_v1)?,
         IpfsCid::from_chunk(
@@ -35,7 +33,6 @@ fn dev() -> Result<(), cid::Error> {
             Multicodec::DagPb,
             MultihashType::Sha2_256,
             &[],
-            &ha,
         )?,
     ];
     let cids_v1 = cids.clone().map(|cid| cid.into_v1().unwrap());

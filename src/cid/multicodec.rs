@@ -7,7 +7,6 @@ use num_derive::FromPrimitive;
 /// (with tag = "ipld" and status = "permanent";
 /// 
 /// Ethereum*, Bitcoin*, Zcash* are excluded)
-#[repr(u64)]
 #[derive(Debug, FromPrimitive)]
 pub enum Multicodec {
     /// Raw binary

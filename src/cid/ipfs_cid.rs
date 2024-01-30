@@ -1,8 +1,4 @@
-use super::{
-    hashing::{HashAlgorithms, MultihashType},
-    multicodec::Multicodec,
-    MAX_HASH_LEN,
-};
+use super::{hashing::MultihashType, multicodec::Multicodec, MAX_HASH_LEN};
 use cid::{multibase::Base as Multibase, multihash::Multihash, CidGeneric, Error, Version};
 use num_traits::FromPrimitive;
 
@@ -17,9 +13,8 @@ impl IpfsCid {
         codec: Multicodec,
         hash_type: MultihashType,
         chunk: &[u8],
-        ha: &HashAlgorithms,
     ) -> Result<Self, Error> {
-        CidGeneric::new(version, codec as u64, ha.digest(hash_type, chunk)).map(|cid| Self { cid })
+        CidGeneric::new(version, codec as u64, hash_type.digest(chunk)?).map(|cid| Self { cid })
     }
 
     pub fn from_bytes(b: &[u8]) -> Result<Self, Error> {
