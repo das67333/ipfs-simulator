@@ -1,45 +1,37 @@
 use ipfs_simulator::app::App;
+use std::time::Instant;
 
-// Simulation setup and execution
-fn main() {
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Trace)
-        .format_target(false)
-        .format_timestamp(None)
-        .init();
+#[global_allocator]
+static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-    let mut app = App::new(42);
-    app.add_peers(2);
-    app.run();
+pub fn heapsize() -> usize {
+    let epoch: jemalloc_ctl::epoch_mib = jemalloc_ctl::epoch::mib().unwrap();
+    let allocated: jemalloc_ctl::stats::allocated_mib =
+        jemalloc_ctl::stats::allocated::mib().unwrap();
+
+    // update jemalloc's stats
+    epoch.advance().unwrap();
+
+    // get the memory usage
+    allocated.read().unwrap()
 }
 
-#[test]
-fn dev() -> Result<(), cid::Error> {
-    use ipfs_simulator::cid::*;
+// Simulation setup and execution
+#[inline(never)]
+fn main() {
+    // env_logger::builder()
+    //     .filter_level(log::LevelFilter::Trace)
+    //     .format_target(false)
+    //     .format_timestamp(None)
+    //     .init();
 
-    let s_v0 = "QmdfTbBqBPQ7VNxZEYEj14VmRuZBkqFbiwReogJgS1zR1n";
-    let s_v1 = "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku";
-    let cids = [
-        IpfsCid::from_str(s_v0)?,
-        IpfsCid::from_chunk(
-            CidVersion::V0,
-            Multicodec::DagPb,
-            MultihashType::Sha2_256,
-            &[],
-        )?,
-        IpfsCid::from_str(s_v1)?,
-        IpfsCid::from_chunk(
-            CidVersion::V1,
-            Multicodec::DagPb,
-            MultihashType::Sha2_256,
-            &[],
-        )?,
-    ];
-    let cids_v1 = cids.clone().map(|cid| cid.into_v1().unwrap());
-    assert!(cids_v1.iter().all(|cid| cid == &cids_v1[0]));
-    assert_eq!(cids[0].to_string(Multibase::Base58Btc)?, s_v0);
-    assert_eq!(cids[1].to_string(Multibase::Base58Btc)?, s_v0);
-    assert_eq!(cids[2].to_string(Multibase::Base32Lower)?, s_v1);
-    assert_eq!(cids[3].to_string(Multibase::Base32Lower)?, s_v1);
-    Ok(())
+    let timer = Instant::now();
+    let mut app = App::new(42);
+
+    app.set_network_filter(move |_, _| Some(1.));
+    app.add_peers(10_000);
+    app.run();
+    println!("Simulation finished in {:?}", timer.elapsed());
+
+    println!("Heap size: {} GB", heapsize() as f64 * 1e-9);
 }

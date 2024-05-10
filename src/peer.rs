@@ -1,55 +1,92 @@
-use crate::message::Message;
-use dslab_core::{log_info, Event, EventHandler, Id, Simulation, SimulationContext};
-use rand_chacha::ChaCha20Rng;
-use rsa::{traits::PublicKeyParts, RsaPrivateKey, RsaPublicKey};
-use sha2::{Digest, Sha256};
+use crate::{
+    kbucket::KBucketsTable,
+    message::{FindNodeRequest, FindNodeResponse},
+    network::NetworkAgent,
+    query::{FindNodeQuery, QueryId, QueryPool},
+    Key, PeerId, K_VALUE,
+};
+use dslab_core::{cast, Event, EventData, EventHandler, Simulation, SimulationContext};
 
 pub struct Peer {
     ctx: SimulationContext,
-    priv_key: RsaPrivateKey,
-    pub_key: RsaPublicKey,
-    ipfs_peer_id: String,
+    kbuckets: KBucketsTable,
+    queries: QueryPool,
+    network: NetworkAgent,
 }
 
 impl Peer {
-    const RSA_BITS: usize = 2048;
-
-    pub fn new(sim: &mut Simulation, rng_crypt: &mut ChaCha20Rng) -> Self {
-        let priv_key =
-            RsaPrivateKey::new(rng_crypt, Self::RSA_BITS).expect("Failed to create RSA key");
-        let pub_key = RsaPublicKey::from(&priv_key);
-        let ipfs_peer_id = {
-            let mut hasher = Sha256::new();
-            hasher.update(&pub_key.n().to_bytes_le());
-            hasher.update(&pub_key.e().to_bytes_le());
-            format!("{:x}", hasher.finalize())
-        };
-
-        let ctx = sim.create_context(&ipfs_peer_id);
+    pub fn new(sim: &mut Simulation, name: impl AsRef<str>, network: NetworkAgent) -> Self {
+        let ctx = sim.create_context(name);
+        let local_key = Key::from_peer_id(ctx.id());
         Self {
             ctx,
-            priv_key,
-            pub_key,
-            ipfs_peer_id,
+            kbuckets: KBucketsTable::new(local_key),
+            queries: QueryPool::new(),
+            network,
         }
     }
 
-    pub fn ipfs_peer_id(&self) -> &str {
-        &self.ipfs_peer_id
+    pub fn add_peer(&mut self, peer_id: PeerId) {
+        self.kbuckets.add_peer(peer_id);
     }
 
-    pub fn send_msg(&mut self, msg: Message, dst: Id, delay: f64) {
-        self.ctx.emit(msg, dst, delay);
+    pub fn id(&self) -> PeerId {
+        self.ctx.id()
+    }
+
+    fn send_message(&mut self, data: impl EventData, dst: PeerId) {
+        if let Some(delay) = self.network.get_message_latency(self.ctx.id(), dst) {
+            self.ctx.emit(data, dst, delay);
+        }
+    }
+
+    pub fn stats(&self) -> usize {
+        self.queries.stats()
+    }
+
+    pub fn find_random_node(&mut self) -> QueryId {
+        let key = Key::random(&self.ctx);
+        self.find_node(&key)
+    }
+
+    /// Finding the closest nodes to the given key.
+    pub fn find_node(&mut self, key: &Key) -> QueryId {
+        let local_closest_peers = self.kbuckets.local_closest_peers(key, K_VALUE);
+        let (query_id, requests) =
+            FindNodeQuery::new_query(&mut self.queries, key.clone(), local_closest_peers);
+        for (dst, request) in requests {
+            self.send_message(request, dst);
+        }
+        query_id
     }
 }
 
 impl EventHandler for Peer {
     fn on(&mut self, event: Event) {
-        log_info!(
-            self.ctx,
-            "Received message: src={}, dst={}",
-            event.src,
-            event.dst
-        );
+        self.kbuckets.add_peer(event.src);
+        cast!(match event.data {
+            FindNodeRequest { query_id, key } => {
+                let closest_peers = self.kbuckets.local_closest_peers(&key, K_VALUE);
+                self.send_message(
+                    FindNodeResponse {
+                        query_id,
+                        closest_peers,
+                    },
+                    event.src,
+                );
+            }
+            FindNodeResponse {
+                query_id,
+                closest_peers,
+            } => {
+                if let Some(query) = self.queries.get_mut_find_node_query(query_id) {
+                    if let Some((dst, request)) =
+                        query.on_response(event.src, query_id, closest_peers)
+                    {
+                        self.send_message(request, dst);
+                    }
+                }
+            }
+        })
     }
 }
