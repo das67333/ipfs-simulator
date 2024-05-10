@@ -39,7 +39,7 @@ impl App {
             self.peers.push(peer);
         }
         for i in 0..peers_cnt {
-            const K: usize = 200; ///////////////////////////////////////////////////////////
+            const K: usize = 40; ///////////////////////////////////////////////////////////
             let mut peer = self.peers[i].borrow_mut();
             for _ in 0..K {
                 peer.add_peer(self.peer_ids[self.sim.gen_range(0..peers_cnt)]);
@@ -58,11 +58,11 @@ impl App {
         }
         println!("Simulation finished in {} steps", steps_cnt);
 
-        let t = self
-            .peers
-            .iter()
-            .map(|peer| peer.borrow().stats())
-            .sum::<usize>();
-        println!("Peers stats: {}", t);
+        // let t = self
+        //     .peers
+        //     .iter()
+        //     .map(|peer| peer.borrow().stats())
+        //     .sum::<usize>();
+        // println!("Peers stats: {}", t);
     }
 }

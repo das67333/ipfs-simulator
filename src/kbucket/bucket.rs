@@ -2,12 +2,11 @@ use std::collections::BinaryHeap;
 
 use super::key::Key;
 use crate::{Distance, PeerId, K_VALUE};
-use arrayvec::ArrayVec;
 
 #[derive(Debug, Clone)]
 pub struct KBucketsTable {
     local_key: Key,
-    buckets: Vec<ArrayVec<PeerId, K_VALUE>>,
+    buckets: Vec<Vec<PeerId>>,
 }
 
 impl KBucketsTable {
@@ -49,7 +48,7 @@ impl KBucketsTable {
         }
         let pos = self.local_key.distance(key).leading_zeros() as usize;
         if self.buckets.len() <= pos {
-            self.buckets.resize(pos + 1, ArrayVec::new());
+            self.buckets.resize(pos + 1, Vec::with_capacity(K_VALUE));
         }
         let bucket = &mut self.buckets[pos];
         let pos = bucket.iter().position(|&id| id == peer_id);

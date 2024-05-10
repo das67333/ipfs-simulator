@@ -35,14 +35,10 @@ impl QueryPool {
         self.find_node_queries.get_mut(&query_id)
     }
 
-    pub fn stats(&self) -> usize {
-        self.find_node_queries
-            .values()
-            .map(|query| match &query.state {
-                QueryState::InProgress => 0,
-                QueryState::Completed(value) => (value.len() == K_VALUE) as usize,
-            })
-            .sum()
+    pub fn evaluate(&mut self) -> f64 {
+        let len = self.find_node_queries.len() as f64;
+        let queries = std::mem::replace(&mut self.find_node_queries, HashMap::new());
+        queries.into_iter().map(|(_, query)| query.evaluate()).sum::<f64>() / len
     }
 }
 

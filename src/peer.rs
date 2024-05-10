@@ -40,8 +40,8 @@ impl Peer {
         }
     }
 
-    pub fn stats(&self) -> usize {
-        self.queries.stats()
+    pub fn evaluate_queries(&mut self) -> f64 {
+        self.queries.evaluate()
     }
 
     pub fn find_random_node(&mut self) -> QueryId {
@@ -51,19 +51,16 @@ impl Peer {
 
     /// Finding the closest nodes to the given key.
     pub fn find_node(&mut self, key: &Key) -> QueryId {
-        let local_closest_peers = self.kbuckets.local_closest_peers(key, K_VALUE);
-        let (query_id, requests) =
-            FindNodeQuery::new_query(&mut self.queries, key.clone(), local_closest_peers);
-        for (dst, request) in requests {
-            self.send_message(request, dst);
-        }
+        let (query_id, request) =
+            FindNodeQuery::new_query(&mut self.queries, key.clone(), self.ctx.id());
+        self.send_message(request, self.ctx.id());
         query_id
     }
 }
 
 impl EventHandler for Peer {
     fn on(&mut self, event: Event) {
-        self.kbuckets.add_peer(event.src);
+        // self.kbuckets.add_peer(event.src);
         cast!(match event.data {
             FindNodeRequest { query_id, key } => {
                 let closest_peers = self.kbuckets.local_closest_peers(&key, K_VALUE);
@@ -80,9 +77,7 @@ impl EventHandler for Peer {
                 closest_peers,
             } => {
                 if let Some(query) = self.queries.get_mut_find_node_query(query_id) {
-                    if let Some((dst, request)) =
-                        query.on_response(event.src, query_id, closest_peers)
-                    {
+                    for (dst, request) in query.on_response(event.src, query_id, closest_peers) {
                         self.send_message(request, dst);
                     }
                 }

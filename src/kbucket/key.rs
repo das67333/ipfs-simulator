@@ -81,3 +81,11 @@ impl Distance {
         self.0.leading_zeros()
     }
 }
+
+impl std::ops::Not for Distance {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self(!self.0)
+    }
+}

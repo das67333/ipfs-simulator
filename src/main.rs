@@ -17,7 +17,6 @@ pub fn heapsize() -> usize {
 }
 
 // Simulation setup and execution
-#[inline(never)]
 fn main() {
     // env_logger::builder()
     //     .filter_level(log::LevelFilter::Trace)
@@ -29,7 +28,7 @@ fn main() {
     let mut app = App::new(42);
 
     app.set_network_filter(move |_, _| Some(1.));
-    app.add_peers(10_000);
+    app.add_peers(100_000);
     app.run();
     println!("Simulation finished in {:?}", timer.elapsed());
 
