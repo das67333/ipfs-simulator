@@ -2,9 +2,9 @@ use super::QueryState;
 use crate::{
     message::FindNodeRequest,
     query::{QueryId, QueryPool},
-    Distance, Key, PeerId, ALPHA_VALUE, CONFIG, K_VALUE,
+    Distance, Key, PeerId, ALPHA_VALUE, KEYS_TREE, K_VALUE,
 };
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::HashSet;
 
 type FindNodeQueryState = QueryState<Vec<(PeerId, FindNodeRequest)>, (Key, Vec<PeerId>)>;
 
@@ -161,32 +161,10 @@ impl FindNodeQuery {
 /// (number of nodes included in the correct answer).
 ///
 /// This method is slow as it iterates over all peers' keys in the network.
-pub fn evaluate_closest_peers(target_key: Key, mut result: Vec<PeerId>) -> usize {
-    result.sort_unstable();
-
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    struct HeapItem {
-        dist: Distance,
-        peer_id: PeerId,
-    }
-
-    let n = result.len();
-    let mut heap = BinaryHeap::with_capacity(n);
-    for peer_id in 0..CONFIG.num_peers {
-        let dist = Key::from_peer_id(peer_id).distance(&target_key);
-        if heap.len() < n {
-            heap.push(HeapItem { dist, peer_id });
-        } else if dist < heap.peek().unwrap().dist {
-            heap.pop();
-            heap.push(HeapItem { dist, peer_id });
-        }
-    }
-    let correct_result = heap
-        .into_iter()
-        .map(|item| item.peer_id)
-        .collect::<HashSet<_>>();
+pub fn evaluate_closest_peers(target_key: Key, result: &[PeerId]) -> usize {
+    let correct_result = KEYS_TREE.find_closest_peers(&target_key, result.len());
     result
         .iter()
-        .map(|peer_id| correct_result.contains(peer_id) as usize)
-        .sum::<usize>()
+        .filter(|&id| correct_result.contains(id))
+        .count()
 }

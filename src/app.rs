@@ -1,4 +1,4 @@
-use crate::{network::NetworkAgent, peer::Peer, PeerId, CONFIG};
+use crate::{kbucket::OnFullKBucket, network::NetworkAgent, peer::Peer, PeerId, CONFIG};
 use dslab_core::{Simulation, SimulationContext};
 use std::{cell::RefCell, rc::Rc};
 
@@ -48,7 +48,7 @@ impl App {
         for i in 0..n {
             let mut peer = self.peers[i as usize].borrow_mut();
             for j in 0..n {
-                peer.add_peer(j);
+                peer.add_peer(j, OnFullKBucket::Ignore);
             }
         }
     }

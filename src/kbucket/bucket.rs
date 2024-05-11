@@ -113,7 +113,7 @@ impl KBucketsTable {
                     match on_full {
                         OnFullKBucket::Ignore => {}
                         OnFullKBucket::PingLeastRecentlySeen => {
-                            // ping the least recently seen node and replace if not responded
+                            // TODO: ping the least recently seen node and replace if not responded
                         }
                         OnFullKBucket::ReplaceLeastRecentlySeen => {
                             bucket[*K_VALUE - 1] = peer_id;
@@ -124,7 +124,6 @@ impl KBucketsTable {
                             }
                         }
                     }
-                    // ping the least recently seen node and replace if not responded
                 }
             }
         }
@@ -132,6 +131,7 @@ impl KBucketsTable {
     }
 }
 
+/// The action to take when a k-bucket is full.
 pub enum OnFullKBucket {
     Ignore,
     PingLeastRecentlySeen,

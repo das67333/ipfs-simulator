@@ -20,4 +20,7 @@ lazy_static::lazy_static! {
     static ref KEYS_POOL: Vec<Key> = (0..CONFIG.num_peers)
         .map(|id: PeerId| Key::from_sha256(&id.to_le_bytes()))
         .collect();
+    static ref KEYS_TREE: kbucket::KeysTree = kbucket::KeysTree::new(&KEYS_POOL);
+    static ref PEER_ID_BY_KEY: std::collections::HashMap<Key, PeerId> = KEYS_POOL
+        .iter().enumerate().map(|(id, key)| (key.clone(), id as PeerId)).collect();
 }

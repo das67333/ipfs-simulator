@@ -25,7 +25,7 @@ impl QueriesStats {
     ///
     /// * `target_key` - The key used in the query.
     /// * `peers` - The list of peers returned by the query.
-    pub fn evaluate(&mut self, target_key: Key, peers: Vec<PeerId>) {
+    pub fn evaluate(&mut self, target_key: Key, peers: &[PeerId]) {
         self.find_node_queries_cnt += 1;
         self.closest_peers_total += peers.len();
         self.closest_peers_correct += evaluate_closest_peers(target_key, peers);

@@ -31,9 +31,8 @@ impl Peer {
     }
 
     /// Adds a peer to the k-buckets table.
-    pub fn add_peer(&mut self, peer_id: PeerId) {
-        self.kbuckets
-            .add_peer(peer_id, OnFullKBucket::ReplaceLeastRecentlySeen);
+    pub fn add_peer(&mut self, peer_id: PeerId, on_full: OnFullKBucket) {
+        self.kbuckets.add_peer(peer_id, on_full);
     }
 
     /// Returns the statistics related to queries.
@@ -119,7 +118,7 @@ impl EventHandler for Peer {
                             }
                         }
                         QueryState::Completed((target_key, peers)) => {
-                            self.stats.evaluate(target_key, peers);
+                            self.stats.evaluate(target_key, &peers);
                             to_remove = true;
                         }
                     }
