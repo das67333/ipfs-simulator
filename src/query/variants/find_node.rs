@@ -1,4 +1,4 @@
-use super::QueryState;
+use super::{QueryState, QueryTrigger};
 use crate::{
     message::FindNodeRequest,
     query::{QueryId, QueryPool},
@@ -13,6 +13,7 @@ type FindNodeQueryState = QueryState<Vec<(PeerId, FindNodeRequest)>, (Key, Vec<P
 /// This struct provides methods to create a new query, handle responses from peers,
 /// and evaluate the query to calculate the correctness of the results.
 pub struct FindNodeQuery {
+    trigger: QueryTrigger,
     target_key: Key,
     peers_all: HashSet<PeerId>,   // waiting + responded + next
     peers_responded: Vec<PeerId>, // sorted by distance to target in descending order
@@ -35,10 +36,12 @@ impl FindNodeQuery {
     /// This request should be sent to the current peer!
     pub fn new_query(
         queries: &mut QueryPool,
+        trigger: QueryTrigger,
         target_key: Key,
         self_id: PeerId,
     ) -> (QueryId, FindNodeRequest) {
         let query_id = queries.add_find_node_query(FindNodeQuery {
+            trigger,
             target_key: target_key.clone(),
             peers_all: HashSet::from_iter([self_id]),
             peers_responded: vec![],
@@ -56,6 +59,10 @@ impl FindNodeQuery {
                 key: target_key,
             },
         )
+    }
+
+    pub fn trigger(&self) -> QueryTrigger {
+        self.trigger.clone()
     }
 
     /// Handles a response from a peer.

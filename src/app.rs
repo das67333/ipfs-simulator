@@ -1,4 +1,6 @@
-use crate::{kbucket::OnFullKBucket, network::NetworkAgent, peer::Peer, PeerId, CONFIG};
+use crate::{
+    kbucket::OnFullKBucket, network::NetworkAgent, peer::Peer, query::QueryTrigger, PeerId, CONFIG,
+};
 use dslab_core::{Simulation, SimulationContext};
 use std::{cell::RefCell, rc::Rc};
 
@@ -55,7 +57,7 @@ impl App {
 
     pub fn run(&mut self) {
         for peer in self.peers.iter_mut() {
-            peer.borrow_mut().find_random_node();
+            peer.borrow_mut().find_random_node(QueryTrigger::Manual);
         }
 
         let mut steps_cnt = 0;

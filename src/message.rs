@@ -18,3 +18,12 @@ pub struct FindNodeResponse {
     /// The list of locally closest peers.
     pub closest_peers: Vec<PeerId>,
 }
+
+/// Represents a PutValue request.
+#[derive(Clone, Serialize)]
+pub struct PutValueRequest {
+    /// The value to store.
+    pub value: String,
+    /// The expiration time of the value.
+    pub expires_at: f64,
+}

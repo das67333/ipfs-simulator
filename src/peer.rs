@@ -1,9 +1,12 @@
 use crate::{
     kbucket::{KBucketsTable, OnFullKBucket},
-    message::{FindNodeRequest, FindNodeResponse},
+    message::{FindNodeRequest, FindNodeResponse, PutValueRequest},
     network::NetworkAgent,
-    query::{FindNodeQuery, QueriesStats, QueryId, QueryPool, QueryState},
-    Key, PeerId, K_VALUE,
+    query::{
+        FindNodeQuery, PutValueQuery, QueriesStats, QueryId, QueryPool, QueryState, QueryTrigger,
+    },
+    storage::LocalDHTStorage,
+    Key, PeerId, CONFIG, K_VALUE,
 };
 use dslab_core::{cast, Event, EventData, EventHandler, Simulation, SimulationContext};
 
@@ -13,6 +16,7 @@ pub struct Peer {
     kbuckets: KBucketsTable,
     queries: QueryPool,
     network: NetworkAgent,
+    storage: LocalDHTStorage,
     stats: QueriesStats,
 }
 
@@ -26,6 +30,7 @@ impl Peer {
             kbuckets: KBucketsTable::new(local_key),
             queries: QueryPool::new(),
             network,
+            storage: LocalDHTStorage::new(),
             stats: QueriesStats::new(),
         }
     }
@@ -65,9 +70,9 @@ impl Peer {
     /// # Returns
     ///
     /// The ID of the initiated query.
-    pub fn find_random_node(&mut self) -> QueryId {
+    pub fn find_random_node(&mut self, trigger: QueryTrigger) -> QueryId {
         let key = Key::random(&self.ctx);
-        self.find_node(&key)
+        self.find_node(&key, trigger)
     }
 
     /// Finds the closest nodes to the given key.
@@ -79,10 +84,19 @@ impl Peer {
     /// # Returns
     ///
     /// The ID of the initiated query.
-    pub fn find_node(&mut self, key: &Key) -> QueryId {
+    pub fn find_node(&mut self, key: &Key, trigger: QueryTrigger) -> QueryId {
         let (query_id, request) =
-            FindNodeQuery::new_query(&mut self.queries, key.clone(), self.ctx.id());
+            FindNodeQuery::new_query(&mut self.queries, trigger, key.clone(), self.ctx.id());
         self.send_message(request, self.ctx.id());
+        self.stats.find_node_queries_started += 1;
+        query_id
+    }
+
+    /// Puts a value into the DHT.
+    pub fn put_value(&mut self, value: String) -> QueryId {
+        let (query_id, key) = PutValueQuery::new_query(&mut self.queries, value);
+        self.stats.put_value_queries_started += 1;
+        self.find_node(&key, QueryTrigger::PutValue(query_id));
         query_id
     }
 }
@@ -109,7 +123,6 @@ impl EventHandler for Peer {
                 query_id,
                 closest_peers,
             } => {
-                let mut to_remove = false;
                 if let Some(query) = self.queries.get_mut_find_node_query(query_id) {
                     match query.on_response(event.src, query_id, closest_peers) {
                         QueryState::InProgress(requests) => {
@@ -118,14 +131,32 @@ impl EventHandler for Peer {
                             }
                         }
                         QueryState::Completed((target_key, peers)) => {
+                            self.stats.find_node_queries_completed += 1;
                             self.stats.evaluate(target_key, &peers);
-                            to_remove = true;
+
+                            if let QueryTrigger::PutValue(query_id) = query.trigger() {
+                                if let Some(query) = self.queries.remove_put_value_query(query_id) {
+                                    self.stats.put_value_queries_completed += 1;
+                                    for peer in peers {
+                                        self.send_message(
+                                            PutValueRequest {
+                                                value: query.value(),
+                                                expires_at: self.ctx.time()
+                                                    + CONFIG.provider_record_expiration_interval,
+                                            },
+                                            peer,
+                                        );
+                                    }
+                                }
+                            }
+
+                            self.queries.remove_find_node_query(query_id);
                         }
                     }
                 }
-                if to_remove {
-                    self.queries.remove_find_node_query(query_id);
-                }
+            }
+            PutValueRequest { value, expires_at } => {
+                self.storage.put(value, expires_at);
             }
         });
     }

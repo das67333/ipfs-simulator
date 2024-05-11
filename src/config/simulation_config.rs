@@ -8,6 +8,7 @@ pub struct SimulationConfig {
     pub num_peers: u32,
     pub delay_distribution: DelayDistribution,
     pub topology: Topology,
+    pub provider_record_expiration_interval: f64,
 }
 
 impl SimulationConfig {
@@ -82,6 +83,7 @@ impl SimulationConfig {
             num_peers: toml.num_peers,
             delay_distribution,
             topology,
+            provider_record_expiration_interval: toml.provider_record_expiration_interval,
         }
     }
 }

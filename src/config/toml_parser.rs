@@ -13,6 +13,7 @@ pub struct ConfigTOML {
     pub delay_min: Option<f64>,
     pub delay_max: Option<f64>,
     pub topology: String,
+    pub provider_record_expiration_interval: f64,
 }
 
 impl ConfigTOML {

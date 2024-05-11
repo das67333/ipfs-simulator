@@ -18,3 +18,6 @@ delay_max = 3.0
 # network topology of the peers
 # valid values are 'full', 'random', 'small-world'
 topology = 'full'
+
+# timeouts
+provider_record_expiration_interval = 172800.0 # 48 hours
