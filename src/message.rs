@@ -27,3 +27,9 @@ pub struct PutValueRequest {
     /// The expiration time of the value.
     pub expires_at: f64,
 }
+
+#[derive(Clone, Serialize)]
+pub struct PingRequest {}
+
+#[derive(Clone, Serialize)]
+pub struct PingResponse {}

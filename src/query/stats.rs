@@ -2,7 +2,7 @@ use super::variants::evaluate_closest_peers;
 use crate::{Key, PeerId};
 
 /// Struct to store statistics related to queries.
-#[derive(Clone, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct QueriesStats {
     pub find_node_queries_started: usize,
     pub find_node_queries_completed: usize,
@@ -12,6 +12,8 @@ pub struct QueriesStats {
     pub put_value_queries_started: usize,
     pub put_value_queries_completed: usize,
     pub put_value_queries_failed: usize,
+    pub ping_requests_cnt: usize,
+    pub ping_responses_cnt: usize,
 }
 
 impl QueriesStats {

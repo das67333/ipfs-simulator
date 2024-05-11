@@ -1,6 +1,6 @@
 use crate::{
     kbucket::{KBucketsTable, OnFullKBucket},
-    message::{FindNodeRequest, FindNodeResponse, PutValueRequest},
+    message::{FindNodeRequest, FindNodeResponse, PingRequest, PingResponse, PutValueRequest},
     network::NetworkAgent,
     query::{
         FindNodeQuery, PutValueQuery, QueriesStats, QueryId, QueryPool, QueryState, QueryTrigger,
@@ -157,6 +157,13 @@ impl EventHandler for Peer {
             }
             PutValueRequest { value, expires_at } => {
                 self.storage.put(value, expires_at);
+            }
+            PingRequest {} => {
+                self.stats.ping_requests_cnt += 1;
+                self.send_message(PingResponse {}, event.src);
+            }
+            PingResponse {} => {
+                self.stats.ping_responses_cnt += 1;
             }
         });
     }
