@@ -25,10 +25,7 @@ fn main() {
     //     .init();
 
     let timer = Instant::now();
-    let mut app = App::new(42);
-
-    app.set_network_filter(move |_, _| Some(1.));
-    app.add_peers(100_000);
+    let mut app = App::new();
     app.run();
     println!("Simulation finished in {:?}", timer.elapsed());
 

@@ -1,7 +1,8 @@
-use crate::{network::NetworkAgent, peer::Peer, PeerId};
-use dslab_core::Simulation;
+use crate::{network::NetworkAgent, peer::Peer, PeerId, CONFIG};
+use dslab_core::{Simulation, SimulationContext};
 use std::{cell::RefCell, rc::Rc};
 
+/// Represents the application that runs the IPFS simulator.
 pub struct App {
     sim: Simulation,
     peers: Vec<Rc<RefCell<Peer>>>,
@@ -10,24 +11,30 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(seed: u64) -> Self {
-        Self {
-            sim: Simulation::new(seed),
+    pub fn new() -> Self {
+        let mut app = Self {
+            sim: Simulation::new(CONFIG.seed),
             peers: vec![],
             peer_ids: vec![],
-            network: NetworkAgent::default(),
-        }
+            network: NetworkAgent::from_topology_and_delay_distribution(
+                CONFIG.topology.clone(),
+                CONFIG.delay_distribution.clone(),
+            ),
+        };
+        app.add_peers();
+        app
     }
 
     pub fn set_network_filter(
         &mut self,
-        filter: impl FnMut(PeerId, PeerId) -> Option<f64> + 'static,
+        filter: impl FnMut(&SimulationContext, PeerId, PeerId) -> Option<f64> + 'static,
     ) {
-        self.network = NetworkAgent::new(filter);
+        self.network = NetworkAgent::from_function(filter);
     }
 
-    pub fn add_peers(&mut self, peers_cnt: usize) {
-        for i in 0..peers_cnt {
+    fn add_peers(&mut self) {
+        let n = CONFIG.num_peers as usize;
+        for i in 0..n {
             let name = format!("peer-{}", i);
             let peer = Rc::new(RefCell::new(Peer::new(
                 &mut self.sim,
@@ -38,11 +45,11 @@ impl App {
                 .push(self.sim.add_handler(&name, peer.clone()));
             self.peers.push(peer);
         }
-        for i in 0..peers_cnt {
+        for i in 0..n {
             const K: usize = 40; ///////////////////////////////////////////////////////////
             let mut peer = self.peers[i].borrow_mut();
             for _ in 0..K {
-                peer.add_peer(self.peer_ids[self.sim.gen_range(0..peers_cnt)]);
+                peer.add_peer(self.peer_ids[self.sim.gen_range(0..n)]);
             }
         }
     }
@@ -61,8 +68,15 @@ impl App {
         // let t = self
         //     .peers
         //     .iter()
-        //     .map(|peer| peer.borrow().stats())
-        //     .sum::<usize>();
+        //     .map(|peer| peer.borrow_mut().evaluate_queries())
+        //     .sum::<f64>()
+        //     / self.peers.len() as f64;
         // println!("Peers stats: {}", t);
+    }
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -1,7 +1,5 @@
-use crate::PeerId;
+use crate::{PeerId, KEYS_POOL};
 use dslab_core::SimulationContext;
-use lazy_static::lazy_static;
-use sha2::{Digest, Sha256};
 use uint::*;
 
 construct_uint! {
@@ -19,12 +17,6 @@ pub struct Key(U256);
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Distance(U256);
 
-lazy_static! {
-    static ref SHA2_POOL: Vec<Key> = (0..100_000)
-        .map(|id: PeerId| { Key(U256::from(Sha256::digest(id.to_le_bytes()).as_slice())) })
-        .collect();
-}
-
 impl Key {
     /// Generates a random key using the given simulation context.
     pub fn random(ctx: &SimulationContext) -> Self {
@@ -32,10 +24,15 @@ impl Key {
         Self(U256::from_little_endian(&bytes))
     }
 
+    pub fn from_sha256(bytes: &[u8]) -> Self {
+        use sha2::{Digest, Sha256};
+        Self(U256::from(Sha256::digest(bytes).as_slice()))
+    }
+
     /// A static reference to the key that was lazily generated on the first
     /// call to this function.
     pub fn from_peer_id(peer_id: PeerId) -> &'static Self {
-        &SHA2_POOL[peer_id as usize]
+        &KEYS_POOL[peer_id as usize]
     }
 
     /// Calculates the distance between two keys using the XOR metric.

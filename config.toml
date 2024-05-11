@@ -1,0 +1,20 @@
+# u64 seed for the random number generator
+seed = 42
+# usize, a widely used parameter in ipfs
+k = 20
+# usize, max number of concurrent requests of a peer
+alpha = 3
+# u32, max number of peers in the network
+num_peers = 10_000
+# distribution of the delays between peers
+# valid values are 'constant', 'uniform', 'positive_normal'
+# if 'constant', the 'delay_mean' key should be provided
+# if 'uniform' => 'latency_min' and 'latency_max'
+# if 'positive_normal' => 'delay_mean' and 'delay_std_dev'
+# all of the must be non-negative
+delay_distribution = 'uniform'
+delay_min = 1.0
+delay_max = 3.0
+# network topology of the peers
+# valid values are 'full', 'random', 'small-world'
+topology = 'full'
