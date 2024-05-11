@@ -3,8 +3,8 @@ use std::collections::BinaryHeap;
 use super::key::Key;
 use crate::{Distance, PeerId, K_VALUE};
 
-#[derive(Debug, Clone)]
 /// Represents a Kademlia buckets table.
+#[derive(Debug, Clone)]
 pub struct KBucketsTable {
     local_key: Key,
     buckets: Vec<Vec<PeerId>>,

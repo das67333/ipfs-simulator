@@ -7,11 +7,11 @@ use super::{DelayDistribution, Topology};
 
 type Agent = dyn FnMut(&SimulationContext, PeerId, PeerId) -> Option<f64>;
 
-#[derive(Clone)]
 /// Represents an agent responsible for managing network communication
 /// between peers in a simulation.
 ///
 /// Default network agent sends all messages with a delay of 1 time unit.
+#[derive(Clone)]
 pub struct NetworkAgent {
     filter: Rc<RefCell<Agent>>,
 }

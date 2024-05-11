@@ -33,21 +33,13 @@ impl QueryPool {
         query_id
     }
 
+    pub fn remove_find_node_query(&mut self, query_id: QueryId) -> bool {
+        self.find_node_queries.remove(&query_id).is_some()
+    }
+
     /// Returns a mutable reference to the `FindNodeQuery` with the specified query ID, if it exists.
     pub fn get_mut_find_node_query(&mut self, query_id: QueryId) -> Option<&mut FindNodeQuery> {
         self.find_node_queries.get_mut(&query_id)
-    }
-
-    /// Clears the list of `FindNodeQuery` instances, returning the quality of the obtained results
-    /// (average proportion of nodes that are actually top `K_VALUE` by proximity to the key).
-    pub fn evaluate_find_node_queries(&mut self) -> f64 {
-        let len = self.find_node_queries.len() as f64;
-        let queries = std::mem::take(&mut self.find_node_queries);
-        queries
-            .into_values()
-            .map(|query| query.evaluate())
-            .sum::<f64>()
-            / len
     }
 }
 

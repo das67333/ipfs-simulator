@@ -1,5 +1,7 @@
 mod pool;
+mod stats;
 mod variants;
 
 pub use pool::{QueryId, QueryPool};
-pub use variants::FindNodeQuery;
+pub use stats::QueriesStats;
+pub use variants::{FindNodeQuery, QueryState};

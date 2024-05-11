@@ -2,7 +2,7 @@ use crate::{
     kbucket::{KBucketsTable, OnFullKBucket},
     message::{FindNodeRequest, FindNodeResponse},
     network::NetworkAgent,
-    query::{FindNodeQuery, QueryId, QueryPool},
+    query::{FindNodeQuery, QueriesStats, QueryId, QueryPool, QueryState},
     Key, PeerId, K_VALUE,
 };
 use dslab_core::{cast, Event, EventData, EventHandler, Simulation, SimulationContext};
@@ -13,6 +13,7 @@ pub struct Peer {
     kbuckets: KBucketsTable,
     queries: QueryPool,
     network: NetworkAgent,
+    stats: QueriesStats,
 }
 
 impl Peer {
@@ -25,6 +26,7 @@ impl Peer {
             kbuckets: KBucketsTable::new(local_key),
             queries: QueryPool::new(),
             network,
+            stats: QueriesStats::new(),
         }
     }
 
@@ -32,6 +34,11 @@ impl Peer {
     pub fn add_peer(&mut self, peer_id: PeerId) {
         self.kbuckets
             .add_peer(peer_id, OnFullKBucket::ReplaceLeastRecentlySeen);
+    }
+
+    /// Returns the statistics related to queries.
+    pub fn stats(&mut self) -> QueriesStats {
+        std::mem::take(&mut self.stats)
     }
 
     /// Returns the ID of the peer.
@@ -52,11 +59,6 @@ impl Peer {
         {
             self.ctx.emit(data, dst, delay);
         }
-    }
-
-    /// Evaluates the queries associated with the peer.
-    pub fn evaluate_queries(&mut self) -> f64 {
-        self.queries.evaluate_find_node_queries()
     }
 
     /// Finds the closest peers to a random key.
@@ -90,6 +92,7 @@ impl EventHandler for Peer {
     fn on(&mut self, event: Event) {
         self.kbuckets
             .add_peer(event.src, OnFullKBucket::ReplaceLeastRecentlySeen);
+
         cast!(match event.data {
             FindNodeRequest { query_id, key } => {
                 let closest_peers = self
@@ -107,12 +110,24 @@ impl EventHandler for Peer {
                 query_id,
                 closest_peers,
             } => {
+                let mut to_remove = false;
                 if let Some(query) = self.queries.get_mut_find_node_query(query_id) {
-                    for (dst, request) in query.on_response(event.src, query_id, closest_peers) {
-                        self.send_message(request, dst);
+                    match query.on_response(event.src, query_id, closest_peers) {
+                        QueryState::InProgress(requests) => {
+                            for (dst, request) in requests {
+                                self.send_message(request, dst);
+                            }
+                        }
+                        QueryState::Completed((target_key, peers)) => {
+                            self.stats.evaluate(target_key, peers);
+                            to_remove = true;
+                        }
                     }
                 }
+                if to_remove {
+                    self.queries.remove_find_node_query(query_id);
+                }
             }
-        })
+        });
     }
 }

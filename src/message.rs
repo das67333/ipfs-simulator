@@ -1,8 +1,8 @@
 use crate::{query::QueryId, Key, PeerId};
 use serde::Serialize;
 
-#[derive(Clone, Serialize)]
 /// Represents a FindNode request.
+#[derive(Clone, Serialize)]
 pub struct FindNodeRequest {
     /// The ID of the query.
     pub query_id: QueryId,
@@ -10,8 +10,8 @@ pub struct FindNodeRequest {
     pub key: Key,
 }
 
-#[derive(Clone, Serialize)]
 /// Represents a response to a FindNode query.
+#[derive(Clone, Serialize)]
 pub struct FindNodeResponse {
     /// The ID of the query.
     pub query_id: QueryId,
