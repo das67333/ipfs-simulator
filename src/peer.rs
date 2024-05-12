@@ -67,6 +67,10 @@ impl Peer {
 
     /// Finds the closest peers to a random key.
     ///
+    /// # Arguments
+    /// 
+    /// * `trigger` - The trigger that initiated the query.
+    /// 
     /// # Returns
     ///
     /// The ID of the initiated query.
@@ -80,13 +84,16 @@ impl Peer {
     /// # Arguments
     ///
     /// * `key` - The key to find the closest nodes to.
+    /// * `trigger` - The trigger that initiated the query.
     ///
     /// # Returns
     ///
     /// The ID of the initiated query.
     pub fn find_node(&mut self, key: &Key, trigger: QueryTrigger) -> QueryId {
-        let (query_id, request) =
-            FindNodeQuery::new_query(&mut self.queries, trigger, key.clone(), self.ctx.id());
+        let query_id = self.queries.next_query_id();
+        let (query_request, request) =
+            FindNodeQuery::new(query_id, trigger, key.clone(), self.ctx.id());
+        self.queries.add_find_node_query(query_id, query_request);
         self.send_message(request, self.ctx.id());
         self.stats.find_node_queries_started += 1;
         query_id
@@ -94,7 +101,9 @@ impl Peer {
 
     /// Puts a value into the DHT.
     pub fn put_value(&mut self, value: String) -> QueryId {
-        let (query_id, key) = PutValueQuery::new_query(&mut self.queries, value);
+        let query_id = self.queries.next_query_id();
+        let (query, key) = PutValueQuery::new(value);
+        self.queries.add_put_value_query(query_id, query);
         self.stats.put_value_queries_started += 1;
         self.find_node(&key, QueryTrigger::PutValue(query_id));
         query_id

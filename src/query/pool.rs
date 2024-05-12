@@ -19,7 +19,7 @@ impl QueryPool {
         Self::default()
     }
 
-    fn next_query_id(&mut self) -> QueryId {
+    pub fn next_query_id(&mut self) -> QueryId {
         let query_id = self.next_id;
         self.next_id = QueryId(self.next_id.0.wrapping_add(1));
         query_id
@@ -28,10 +28,8 @@ impl QueryPool {
     /// Adds a `FindNodeQuery` to the pool.
     ///
     /// Returns the unique identifier assigned to the query.
-    pub fn add_find_node_query(&mut self, query: FindNodeQuery) -> QueryId {
-        let query_id = self.next_query_id();
+    pub fn add_find_node_query(&mut self, query_id: QueryId, query: FindNodeQuery) {
         self.find_node_queries.insert(query_id, query);
-        query_id
     }
 
     /// Removes a `FindNodeQuery` from the pool.
@@ -47,10 +45,8 @@ impl QueryPool {
     /// Adds a `PutValueQuery` to the pool.
     ///
     /// Returns the unique identifier assigned to the query.
-    pub fn add_put_value_query(&mut self, query: PutValueQuery) -> QueryId {
-        let query_id = self.next_query_id();
+    pub fn add_put_value_query(&mut self, query_id: QueryId, query: PutValueQuery) {
         self.put_value_queries.insert(query_id, query);
-        query_id
     }
 
     /// Removes a `PutValueQuery` from the pool.

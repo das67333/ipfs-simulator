@@ -1,8 +1,7 @@
 use super::{QueryState, QueryTrigger};
 use crate::{
-    message::FindNodeRequest,
-    query::{QueryId, QueryPool},
-    Distance, Key, PeerId, ALPHA_VALUE, KEYS_TREE, K_VALUE,
+    message::FindNodeRequest, query::QueryId, Distance, Key, PeerId, ALPHA_VALUE, KEYS_TREE,
+    K_VALUE,
 };
 use std::collections::HashSet;
 
@@ -22,25 +21,15 @@ pub struct FindNodeQuery {
 }
 
 impl FindNodeQuery {
-    /// Creates a new `FindNodeQuery` and adds it to the query pool.
-    ///
-    /// # Arguments
-    ///
-    /// * `queries` - A mutable reference to the query pool.
-    /// * `target_key` - The target key to find the closest peers to.
-    /// * `self_id` - The ID of the current peer initiating the query.
-    ///
-    /// # Returns
-    ///
-    /// A tuple containing the query ID and the `FindNodeRequest` associated with the query.
-    /// This request should be sent to the current peer!
-    pub fn new_query(
-        queries: &mut QueryPool,
+    /// Creates a new `FindNodeQuery` instance.
+    /// Returns the query and the request to send to itself.
+    pub fn new(
+        query_id: QueryId,
         trigger: QueryTrigger,
         target_key: Key,
         self_id: PeerId,
-    ) -> (QueryId, FindNodeRequest) {
-        let query_id = queries.add_find_node_query(FindNodeQuery {
+    ) -> (FindNodeQuery, FindNodeRequest) {
+        let query = FindNodeQuery {
             trigger,
             target_key: target_key.clone(),
             peers_all: HashSet::from_iter([self_id]),
@@ -51,14 +40,12 @@ impl FindNodeQuery {
                 v
             },
             peers_next: vec![],
-        });
-        (
+        };
+        let request = FindNodeRequest {
             query_id,
-            FindNodeRequest {
-                query_id,
-                key: target_key,
-            },
-        )
+            key: target_key,
+        };
+        (query, request)
     }
 
     pub fn trigger(&self) -> QueryTrigger {
