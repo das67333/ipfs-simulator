@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 /// Represents a peer's pool of queries.
 #[allow(dead_code)]
-pub struct QueryPool {
+pub struct QueriesPool {
     next_id: QueryId,
     find_node_queries: HashMap<QueryId, FindNodeQuery>,
     put_value_queries: HashMap<QueryId, PutValueQuery>,
@@ -13,7 +13,7 @@ pub struct QueryPool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 pub struct QueryId(u64);
 
-impl QueryPool {
+impl QueriesPool {
     /// Creates an empty `QueryPool` instance.
     pub fn new() -> Self {
         Self::default()
@@ -55,7 +55,7 @@ impl QueryPool {
     }
 }
 
-impl Default for QueryPool {
+impl Default for QueriesPool {
     fn default() -> Self {
         Self {
             next_id: QueryId(0),

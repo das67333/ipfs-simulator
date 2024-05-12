@@ -3,7 +3,7 @@ use crate::{
     message::{FindNodeRequest, FindNodeResponse, PingRequest, PingResponse, PutValueRequest},
     network::NetworkAgent,
     query::{
-        FindNodeQuery, PutValueQuery, QueriesStats, QueryId, QueryPool, QueryState, QueryTrigger,
+        FindNodeQuery, PutValueQuery, QueriesPool, QueriesStats, QueryId, QueryState, QueryTrigger,
     },
     storage::LocalDHTStorage,
     Key, PeerId, CONFIG, K_VALUE,
@@ -14,7 +14,7 @@ use dslab_core::{cast, Event, EventData, EventHandler, Simulation, SimulationCon
 pub struct Peer {
     ctx: SimulationContext,
     kbuckets: KBucketsTable,
-    queries: QueryPool,
+    queries: QueriesPool,
     network: NetworkAgent,
     storage: LocalDHTStorage,
     stats: QueriesStats,
@@ -28,7 +28,7 @@ impl Peer {
         Self {
             ctx,
             kbuckets: KBucketsTable::new(local_key),
-            queries: QueryPool::new(),
+            queries: QueriesPool::new(),
             network,
             storage: LocalDHTStorage::new(),
             stats: QueriesStats::new(),
@@ -68,9 +68,9 @@ impl Peer {
     /// Finds the closest peers to a random key.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `trigger` - The trigger that initiated the query.
-    /// 
+    ///
     /// # Returns
     ///
     /// The ID of the initiated query.
