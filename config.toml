@@ -1,6 +1,6 @@
 # u64 seed for the random number generator
 seed = 42
-# usize, a widely used parameter in ipfs
+# usize, replication parameter
 k = 20
 # usize, max number of concurrent requests of a peer
 alpha = 3
@@ -16,7 +16,9 @@ delay_distribution = 'uniform'
 delay_min = 1.0
 delay_max = 3.0
 # network topology of the peers
-# valid values are 'full', 'random', 'small-world'
+# valid values are 'full', 'ring', 'star'
+# 'full' requires 'first_id' and 'last_id' keys
+# 'star' requires 'center_id' key
 topology = 'full'
 
 # timeouts
