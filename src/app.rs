@@ -49,7 +49,7 @@ impl App {
         }
         for i in 0..n {
             let mut peer = self.peers[i as usize].borrow_mut();
-            for j in 0..n {
+            for j in (0..n).map(|_| self.sim.gen_range(0..n)) {
                 peer.add_peer(j, OnFullKBucket::Ignore);
             }
         }
@@ -69,14 +69,14 @@ impl App {
         let (mut total, mut correct) = (0, 0);
         for peer in self.peers.iter() {
             let stats = peer.borrow_mut().stats();
-            total += stats.closest_peers_total;
+            total += stats.find_node_queries_started;
             correct += stats.closest_peers_correct;
         }
         println!(
             "Correctness: {}/{} = {:.3}",
             correct,
-            total,
-            correct as f64 / total as f64
+            total * *crate::K_VALUE,
+            correct as f64 / (total * *crate::K_VALUE) as f64
         );
     }
 }

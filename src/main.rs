@@ -1,21 +1,6 @@
 use ipfs_simulator::app::App;
 use std::time::Instant;
 
-#[global_allocator]
-static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
-pub fn heapsize() -> usize {
-    let epoch: jemalloc_ctl::epoch_mib = jemalloc_ctl::epoch::mib().unwrap();
-    let allocated: jemalloc_ctl::stats::allocated_mib =
-        jemalloc_ctl::stats::allocated::mib().unwrap();
-
-    // update jemalloc's stats
-    epoch.advance().unwrap();
-
-    // get the memory usage
-    allocated.read().unwrap()
-}
-
 // Simulation setup and execution
 fn main() {
     // env_logger::builder()
@@ -28,6 +13,4 @@ fn main() {
     let mut app = App::new();
     app.run();
     println!("Simulation finished in {:?}", timer.elapsed());
-
-    println!("Heap size: {} GB", heapsize() as f64 * 1e-9);
 }
