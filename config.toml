@@ -23,3 +23,7 @@ topology = 'full'
 
 # timeouts
 provider_record_expiration_interval = 172800.0 # 48 hours
+
+# Configuration for Kademlia "write-back" caching after successful lookups via 'get_record'
+# Up to `max_peers` closest peers not returning the record will receive it.
+caching_max_peers = 1

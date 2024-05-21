@@ -1,11 +1,15 @@
+use crate::Key;
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct Record {
     pub value: String,
     pub expires_at: f64,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct LocalDHTStorage {
-    records: Vec<Record>,
+    records: HashMap<Key, Record>,
 }
 
 impl LocalDHTStorage {
@@ -13,7 +17,11 @@ impl LocalDHTStorage {
         Self::default()
     }
 
-    pub fn put(&mut self, value: String, expires_at: f64) {
-        self.records.push(Record { value, expires_at });
+    pub fn get(&self, key: &Key) -> Option<&Record> {
+        self.records.get(key)
+    }
+
+    pub fn put(&mut self, key: Key, record: Record) {
+        self.records.insert(key, record);
     }
 }

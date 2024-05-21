@@ -9,6 +9,8 @@ pub struct QueriesStats {
     pub find_node_queries_failed: usize,
     pub closest_peers_total: usize,
     pub closest_peers_correct: usize,
+    pub get_value_queries_started: usize,
+    pub get_value_queries_completed: usize,
     pub put_value_queries_started: usize,
     pub put_value_queries_completed: usize,
     pub put_value_queries_failed: usize,

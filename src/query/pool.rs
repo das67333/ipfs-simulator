@@ -1,16 +1,17 @@
-use super::{FindNodeQuery, PutValueQuery};
+use super::{FindNodeQuery, GetValueQuery, PutValueQuery};
 use std::collections::HashMap;
 
 /// Represents a peer's pool of queries.
-#[allow(dead_code)]
+#[derive(Debug, Default)]
 pub struct QueriesPool {
     next_id: QueryId,
     find_node_queries: HashMap<QueryId, FindNodeQuery>,
+    get_value_queries: HashMap<QueryId, GetValueQuery>,
     put_value_queries: HashMap<QueryId, PutValueQuery>,
 }
 
 /// Represents a unique identifier for a query.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 pub struct QueryId(u64);
 
 impl QueriesPool {
@@ -42,6 +43,23 @@ impl QueriesPool {
         self.find_node_queries.get_mut(&query_id)
     }
 
+    /// Adds a `GetValueQuery` to the pool.
+    ///
+    /// Returns the unique identifier assigned to the query.
+    pub fn add_get_value_query(&mut self, query_id: QueryId, query: GetValueQuery) {
+        self.get_value_queries.insert(query_id, query);
+    }
+
+    /// Removes a `GetValueQuery` from the pool.
+    pub fn remove_get_value_query(&mut self, query_id: QueryId) -> Option<GetValueQuery> {
+        self.get_value_queries.remove(&query_id)
+    }
+
+    /// Returns a mutable reference to the `GetValueQuery` with the specified query ID, if it exists.
+    pub fn get_mut_get_value_query(&mut self, query_id: QueryId) -> Option<&mut GetValueQuery> {
+        self.get_value_queries.get_mut(&query_id)
+    }
+
     /// Adds a `PutValueQuery` to the pool.
     ///
     /// Returns the unique identifier assigned to the query.
@@ -55,12 +73,3 @@ impl QueriesPool {
     }
 }
 
-impl Default for QueriesPool {
-    fn default() -> Self {
-        Self {
-            next_id: QueryId(0),
-            find_node_queries: HashMap::new(),
-            put_value_queries: HashMap::new(),
-        }
-    }
-}

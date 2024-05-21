@@ -11,6 +11,7 @@ type FindNodeQueryState = QueryState<Vec<(PeerId, FindNodeRequest)>, (Key, Vec<P
 ///
 /// This struct provides methods to create a new query, handle responses from peers,
 /// and evaluate the query to calculate the correctness of the results.
+#[derive(Debug)]
 pub struct FindNodeQuery {
     trigger: QueryTrigger,
     target_key: Key,

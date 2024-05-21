@@ -9,6 +9,7 @@ pub struct SimulationConfig {
     pub delay_distribution: DelayDistribution,
     pub topology: Topology,
     pub provider_record_expiration_interval: f64,
+    pub caching_max_peers: usize,
 }
 
 impl SimulationConfig {
@@ -84,6 +85,7 @@ impl SimulationConfig {
             delay_distribution,
             topology,
             provider_record_expiration_interval: toml.provider_record_expiration_interval,
+            caching_max_peers: toml.caching_max_peers,
         }
     }
 }
