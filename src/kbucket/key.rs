@@ -36,6 +36,13 @@ impl Key {
         &KEYS_POOL[peer_id as usize]
     }
 
+    pub fn random_in_bucket(ctx: &SimulationContext, index: usize) -> Self {
+        let result = Self::random(ctx).0;
+        let mask = U256::MAX >> index;
+        let last_bit = U256::from(1) << (255 - index);
+        Key((result & mask) | last_bit)
+    }
+
     /// Calculates the distance between two keys using the XOR metric.
     pub fn distance(&self, other: &Key) -> Distance {
         Distance(self.0 ^ other.0)

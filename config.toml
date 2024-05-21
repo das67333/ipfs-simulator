@@ -9,7 +9,7 @@ num_peers = 10_000
 # distribution of the delays between peers
 # valid values are 'constant', 'uniform', 'positive_normal'
 # if 'constant', the 'delay_mean' key should be provided
-# if 'uniform' => 'latency_min' and 'latency_max'
+# if 'uniform' => 'delay_min' and 'delay_max'
 # if 'positive_normal' => 'delay_mean' and 'delay_std_dev'
 # all of the must be non-negative
 delay_distribution = 'uniform'
@@ -22,8 +22,14 @@ delay_max = 3.0
 topology = 'full'
 
 # timeouts
-provider_record_expiration_interval = 172800.0 # 48 hours
+record_publication_interval = 79200.0 # 22 hours
+record_expiration_interval = 172800.0 # 48 hours
+# To keep the routing tables accurate and up to date,
+# IPFS refreshes the routing table every 10 minutes.
+kbuckets_refresh_interval = 600.0
 
 # Configuration for Kademlia "write-back" caching after successful lookups via 'get_record'
 # Up to `max_peers` closest peers not returning the record will receive it.
 caching_max_peers = 1
+
+enable_bootstrap = true

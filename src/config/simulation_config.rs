@@ -8,8 +8,11 @@ pub struct SimulationConfig {
     pub num_peers: u32,
     pub delay_distribution: DelayDistribution,
     pub topology: Topology,
-    pub provider_record_expiration_interval: f64,
+    pub record_publication_interval: f64,
+    pub record_expiration_interval: f64,
+    pub kbuckets_refresh_interval: f64,
     pub caching_max_peers: usize,
+    pub enable_bootstrap: bool,
 }
 
 impl SimulationConfig {
@@ -84,8 +87,11 @@ impl SimulationConfig {
             num_peers: toml.num_peers,
             delay_distribution,
             topology,
-            provider_record_expiration_interval: toml.provider_record_expiration_interval,
+            record_publication_interval: toml.record_publication_interval,
+            record_expiration_interval: toml.record_expiration_interval,
+            kbuckets_refresh_interval: toml.kbuckets_refresh_interval,
             caching_max_peers: toml.caching_max_peers,
+            enable_bootstrap: toml.enable_bootstrap,
         }
     }
 }

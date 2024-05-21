@@ -1,5 +1,5 @@
 use super::{FindNodeQuery, GetValueQuery, PutValueQuery};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Represents a peer's pool of queries.
 #[derive(Debug, Default)]
@@ -8,6 +8,7 @@ pub struct QueriesPool {
     find_node_queries: HashMap<QueryId, FindNodeQuery>,
     get_value_queries: HashMap<QueryId, GetValueQuery>,
     put_value_queries: HashMap<QueryId, PutValueQuery>,
+    retrieve_data_queries: HashSet<QueryId>,
 }
 
 /// Represents a unique identifier for a query.
@@ -27,8 +28,6 @@ impl QueriesPool {
     }
 
     /// Adds a `FindNodeQuery` to the pool.
-    ///
-    /// Returns the unique identifier assigned to the query.
     pub fn add_find_node_query(&mut self, query_id: QueryId, query: FindNodeQuery) {
         self.find_node_queries.insert(query_id, query);
     }
@@ -44,8 +43,6 @@ impl QueriesPool {
     }
 
     /// Adds a `GetValueQuery` to the pool.
-    ///
-    /// Returns the unique identifier assigned to the query.
     pub fn add_get_value_query(&mut self, query_id: QueryId, query: GetValueQuery) {
         self.get_value_queries.insert(query_id, query);
     }
@@ -61,8 +58,6 @@ impl QueriesPool {
     }
 
     /// Adds a `PutValueQuery` to the pool.
-    ///
-    /// Returns the unique identifier assigned to the query.
     pub fn add_put_value_query(&mut self, query_id: QueryId, query: PutValueQuery) {
         self.put_value_queries.insert(query_id, query);
     }
@@ -71,5 +66,12 @@ impl QueriesPool {
     pub fn remove_put_value_query(&mut self, query_id: QueryId) -> Option<PutValueQuery> {
         self.put_value_queries.remove(&query_id)
     }
-}
 
+    pub fn add_retrieve_data_query(&mut self, query_id: QueryId) {
+        self.retrieve_data_queries.insert(query_id);
+    }
+
+    pub fn remove_retrieve_data_query(&mut self, query_id: QueryId) -> bool {
+        self.retrieve_data_queries.remove(&query_id)
+    }
+}

@@ -23,7 +23,7 @@ impl GetValueQuery {
         &mut self,
         peer: PeerId,
         record: Option<Record>,
-    ) -> QueryState<(), (String, Vec<(PeerId, PutValueRequest)>)> {
+    ) -> QueryState<(), (Record, Vec<(PeerId, PutValueRequest)>)> {
         if let Some(record) = record {
             let requests = self
                 .caching
@@ -38,7 +38,7 @@ impl GetValueQuery {
                     )
                 })
                 .collect();
-            QueryState::Completed((record.value, requests))
+            QueryState::Completed((record, requests))
         } else {
             if self.caching.len() < CONFIG.caching_max_peers {
                 self.caching.push(peer);

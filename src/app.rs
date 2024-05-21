@@ -1,6 +1,4 @@
-use crate::{
-    kbucket::OnFullKBucket, network::NetworkAgent, peer::Peer, query::QueryTrigger, PeerId, CONFIG,
-};
+use crate::{network::NetworkAgent, peer::Peer, PeerId, CONFIG};
 use dslab_core::{Simulation, SimulationContext};
 use std::{cell::RefCell, rc::Rc};
 
@@ -50,26 +48,27 @@ impl App {
         for i in 0..n {
             let mut peer = self.peers[i as usize].borrow_mut();
             for j in (0..n).map(|_| self.sim.gen_range(0..n)) {
-                peer.add_peer(j, OnFullKBucket::Ignore);
+                peer.add_peer(j, 0.0);
             }
         }
     }
 
     pub fn run(&mut self) {
-        for peer in self.peers.iter_mut() {
-            peer.borrow_mut().find_random_node(QueryTrigger::Manual);
-        }
+        // for peer in self.peers.iter_mut() {
+        //     peer.borrow_mut().find_random_node(QueryTrigger::Manual);
+        // }
 
         let mut steps_cnt = 0;
-        while self.sim.step() {
+        while self.sim.step() && self.sim.time() < 3600.0 {
             steps_cnt += 1;
         }
         println!("Simulation finished in {} steps", steps_cnt);
+        println!("Simulation time: {:.3} seconds", self.sim.time());
 
         let (mut total, mut correct) = (0, 0);
         for peer in self.peers.iter() {
             let stats = peer.borrow_mut().stats();
-            total += stats.find_node_queries_started;
+            total += stats.find_node_queries_completed;
             correct += stats.closest_peers_correct;
         }
         println!(

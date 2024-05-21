@@ -47,3 +47,23 @@ pub struct PutValueRequest {
     /// The value to store.
     pub record: Record,
 }
+
+#[derive(Clone, Serialize)]
+pub struct RetrieveDataRequest {
+    pub query_id: QueryId,
+    pub key: Key,
+}
+
+#[derive(Clone, Serialize)]
+pub struct RetrieveDataResponse {
+    pub query_id: QueryId,
+    pub data: Option<String>,
+}
+
+#[derive(Clone, Serialize)]
+pub struct BootstrapTimer {}
+
+#[derive(Clone, Serialize)]
+pub struct RepublishTimer {
+    pub key: Key,
+}

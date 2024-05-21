@@ -8,8 +8,10 @@ pub struct PutValueQuery {
 
 impl PutValueQuery {
     pub fn new(record: Record) -> PutValueQuery {
-        let key = Key::from_sha256(record.value.as_bytes());
-        PutValueQuery { key, record }
+        PutValueQuery {
+            key: record.key(),
+            record,
+        }
     }
 
     pub fn key(&self) -> Key {

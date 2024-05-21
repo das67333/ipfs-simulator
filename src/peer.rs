@@ -1,15 +1,16 @@
 use crate::{
-    kbucket::{KBucketsTable, OnFullKBucket},
+    kbucket::KBucketsTable,
     message::{
-        FindNodeRequest, FindNodeResponse, GetValueRequest, GetValueResponse, PingRequest,
-        PingResponse, PutValueRequest,
+        BootstrapTimer, FindNodeRequest, FindNodeResponse, GetValueRequest, GetValueResponse,
+        PingRequest, PingResponse, PutValueRequest, RepublishTimer, RetrieveDataRequest,
+        RetrieveDataResponse,
     },
     network::NetworkAgent,
     query::{
         FindNodeQuery, GetValueQuery, PutValueQuery, QueriesPool, QueriesStats, QueryId,
         QueryState, QueryTrigger,
     },
-    storage::{LocalDHTStorage, Record},
+    storage::{LocalDHTStorage, LocalFileStorage, Record, RecordData},
     Key, PeerId, CONFIG, K_VALUE,
 };
 use dslab_core::{cast, Event, EventData, EventHandler, Simulation, SimulationContext};
@@ -20,7 +21,8 @@ pub struct Peer {
     kbuckets: KBucketsTable,
     queries: QueriesPool,
     network: NetworkAgent,
-    storage: LocalDHTStorage,
+    dht_storage: LocalDHTStorage,
+    file_storage: LocalFileStorage,
     stats: QueriesStats,
 }
 
@@ -29,19 +31,29 @@ impl Peer {
     pub fn new(sim: &mut Simulation, name: impl AsRef<str>, network: NetworkAgent) -> Self {
         let ctx = sim.create_context(name);
         let local_key = Key::from_peer_id(ctx.id());
+
+        if CONFIG.enable_bootstrap {
+            // Schedule the first refresh of the k-buckets table.
+            let delay = ctx.sample_from_distribution(&rand::distributions::Uniform::new(
+                0.0,
+                CONFIG.kbuckets_refresh_interval,
+            ));
+            ctx.emit_self(BootstrapTimer {}, delay);
+        }
         Self {
             ctx,
             kbuckets: KBucketsTable::new(local_key),
             queries: QueriesPool::new(),
             network,
-            storage: LocalDHTStorage::new(),
+            dht_storage: LocalDHTStorage::new(),
+            file_storage: LocalFileStorage::new(),
             stats: QueriesStats::new(),
         }
     }
 
     /// Adds a peer to the k-buckets table.
-    pub fn add_peer(&mut self, peer_id: PeerId, on_full: OnFullKBucket) {
-        self.kbuckets.add_peer(peer_id, on_full);
+    pub fn add_peer(&mut self, peer_id: PeerId, curr_time: f64) {
+        self.kbuckets.add_peer(peer_id, curr_time);
     }
 
     /// Returns the statistics related to queries.
@@ -112,19 +124,40 @@ impl Peer {
         query_id
     }
 
-    /// Puts a value into the DHT.
-    pub fn put_value(&mut self, value: String) -> QueryId {
+    /// Puts a record into the DHT.
+    pub fn put_value(&mut self, record: Record) -> QueryId {
         let query_id = self.queries.next_query_id();
-        let record = Record {
-            value,
-            expires_at: self.ctx.time() + CONFIG.provider_record_expiration_interval,
-        };
-        // TODO: republish
         let query = PutValueQuery::new(record);
         let key = query.key();
         self.queries.add_put_value_query(query_id, query);
         self.stats.put_value_queries_started += 1;
         self.find_node(&key, QueryTrigger::PutValue(query_id));
+        query_id
+    }
+
+    pub fn publish_data(&mut self, data: String) -> Key {
+        let key = Key::from_sha256(data.as_bytes());
+        let record = Record::new_provider_record(self.id(), key.clone(), self.ctx.time());
+        self.file_storage.put(key.clone(), data);
+        self.dht_storage.put(key.clone(), record.clone());
+        self.put_value(record);
+        self.ctx.emit_self(
+            RepublishTimer { key: key.clone() },
+            CONFIG.record_publication_interval,
+        );
+        key
+    }
+
+    pub fn remove_data(&mut self, key: Key) {
+        if let (Some(_), Some(_)) = (self.dht_storage.get(&key), self.file_storage.get(&key)) {
+            self.dht_storage.remove(&key);
+            self.file_storage.remove(&key);
+        }
+    }
+
+    pub fn retrieve_data(&mut self, key: Key) -> QueryId {
+        let query_id = self.get_value(key);
+        self.queries.add_retrieve_data_query(query_id);
         query_id
     }
 
@@ -156,6 +189,10 @@ impl Peer {
                 }
                 QueryState::Completed((target_key, peers)) => {
                     self.stats.evaluate(target_key, &peers);
+
+                    for &id in peers.iter() {
+                        self.kbuckets.add_peer(id, self.ctx.time());
+                    }
 
                     match query.trigger() {
                         QueryTrigger::PutValue(query_id) => {
@@ -197,7 +234,7 @@ impl Peer {
     }
 
     fn on_get_value_request(&mut self, src_id: PeerId, query_id: QueryId, key: Key) {
-        let record = self.storage.get(&key).cloned();
+        let record = self.dht_storage.get(&key).cloned();
         self.send_message(GetValueResponse { query_id, record }, src_id);
     }
 
@@ -205,19 +242,52 @@ impl Peer {
         if let Some(query) = self.queries.get_mut_get_value_query(query_id) {
             match query.on_response(src_id, record) {
                 QueryState::InProgress(()) => {}
-                QueryState::Completed((_value, requests)) => {
+                QueryState::Completed((record, requests)) => {
                     for (dst, request) in requests {
                         self.send_message(request, dst);
                     }
                     self.queries.remove_get_value_query(query_id);
                     self.stats.get_value_queries_completed += 1;
+                    match record.data {
+                        RecordData::ProviderRecord { key, providers } => {
+                            for provider in providers {
+                                self.send_message(
+                                    RetrieveDataRequest {
+                                        query_id,
+                                        key: key.clone(),
+                                    },
+                                    provider,
+                                );
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
     fn on_put_value_request(&mut self, key: Key, record: Record) {
-        self.storage.put(key, record);
+        self.dht_storage.put(key, record);
+    }
+
+    fn on_retrieve_data_request(&mut self, src_id: PeerId, query_id: QueryId, key: Key) {
+        if let Some(data) = self.file_storage.get(&key) {
+            self.send_message(
+                RetrieveDataResponse {
+                    query_id,
+                    data: Some(data.clone()),
+                },
+                src_id,
+            );
+        }
+    }
+
+    fn on_retrieve_data_response(&mut self, query_id: QueryId, data: Option<String>) {
+        if let Some(data) = data {
+            if self.queries.remove_retrieve_data_query(query_id) {
+                // TODO: log that received data
+            }
+        }
     }
 
     fn on_ping_request(&mut self, src_id: PeerId) {
@@ -228,12 +298,35 @@ impl Peer {
     fn on_ping_response(&mut self) {
         self.stats.ping_responses_cnt += 1;
     }
+
+    fn refresh_kbuckets_table(&mut self) {
+        self.dht_storage.remove_expired(self.ctx.time());
+        for i in 0..self.kbuckets.buckets_count().min(15) {
+            let key = Key::random_in_bucket(&self.ctx, i);
+            self.find_node(&key, QueryTrigger::Bootstrap);
+        }
+        let local_key = self.kbuckets.local_key();
+        self.find_node(&local_key, QueryTrigger::Bootstrap);
+        self.ctx
+            .emit_self(BootstrapTimer {}, CONFIG.kbuckets_refresh_interval);
+    }
+
+    fn on_republish_timer(&mut self, key: Key) {
+        if let (Some(record), Some(_)) = (
+            self.dht_storage.get(&key).cloned(),
+            self.file_storage.get(&key),
+        ) {
+            self.dht_storage.remove(&key);
+            self.put_value(record.refreshed(self.ctx.time()));
+            self.ctx
+                .emit_self(RepublishTimer { key }, CONFIG.record_publication_interval);
+        }
+    }
 }
 
 impl EventHandler for Peer {
     fn on(&mut self, event: Event) {
-        self.kbuckets
-            .add_peer(event.src, OnFullKBucket::ReplaceLeastRecentlySeen);
+        self.kbuckets.add_peer(event.src, self.ctx.time());
 
         cast!(match event.data {
             FindNodeRequest { query_id, key } => {
@@ -254,11 +347,23 @@ impl EventHandler for Peer {
             PutValueRequest { key, record } => {
                 self.on_put_value_request(key, record);
             }
+            RetrieveDataRequest { query_id, key } => {
+                self.on_retrieve_data_request(event.src, query_id, key);
+            }
+            RetrieveDataResponse { query_id, data } => {
+                self.on_retrieve_data_response(query_id, data);
+            }
             PingRequest {} => {
                 self.on_ping_request(event.src);
             }
             PingResponse {} => {
                 self.on_ping_response();
+            }
+            BootstrapTimer {} => {
+                self.refresh_kbuckets_table();
+            }
+            RepublishTimer { key } => {
+                self.on_republish_timer(key);
             }
         });
     }

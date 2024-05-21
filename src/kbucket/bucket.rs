@@ -1,13 +1,18 @@
+use super::key::Key;
+use crate::{Distance, PeerId, CONFIG, K_VALUE};
 use std::collections::BinaryHeap;
 
-use super::key::Key;
-use crate::{Distance, PeerId, K_VALUE};
-
 /// Represents a Kademlia buckets table.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct KBucketsTable {
     local_key: Key,
-    buckets: Vec<Vec<PeerId>>,
+    buckets: Vec<Vec<KBucketEntry>>,
+}
+
+#[derive(Debug, Clone)]
+struct KBucketEntry {
+    pub peer_id: PeerId,
+    pub last_seen: f64,
 }
 
 impl KBucketsTable {
@@ -19,9 +24,14 @@ impl KBucketsTable {
         }
     }
 
-    /// Returns a reference to the local key.
-    pub fn local_key(&self) -> &Key {
-        &self.local_key
+    /// Returns the local key.
+    pub fn local_key(&self) -> Key {
+        self.local_key.clone()
+    }
+
+    /// Returns the number of buckets in the Kademlia buckets table.
+    pub fn buckets_count(&self) -> usize {
+        self.buckets.len()
     }
 
     /// Returns a precise list of the closest peers to the given key.
@@ -33,7 +43,8 @@ impl KBucketsTable {
         }
 
         let mut heap = BinaryHeap::with_capacity(count);
-        for &peer_id in self.buckets.iter().flatten() {
+        for entry in self.buckets.iter().flatten() {
+            let peer_id = entry.peer_id;
             let dist = Key::from_peer_id(peer_id).distance(key);
             if heap.len() < count {
                 heap.push(HeapItem { dist, peer_id });
@@ -56,25 +67,25 @@ impl KBucketsTable {
         let bucket = &self.buckets[pos];
         // this is usually true
         if count == bucket.len() {
-            return bucket.clone();
+            return bucket.iter().map(|entry| entry.peer_id).collect();
         }
 
         if count < bucket.len() {
-            let mut copy = bucket.clone();
-            copy.sort_by_key(|id| Key::from_peer_id(*id).distance(key));
+            let mut copy = bucket.iter().map(|entry| entry.peer_id).collect::<Vec<_>>();
+            copy.sort_by_key(|&id| Key::from_peer_id(id).distance(key));
             return copy.into_iter().take(count).collect();
         }
 
         let mut result = Vec::with_capacity(count.min(bucket.len() * *K_VALUE));
         let mut i = pos;
         while i < self.buckets.len() && result.len() < count {
-            result.extend(self.buckets[i].iter().cloned());
+            result.extend(self.buckets[i].iter().map(|entry| entry.peer_id));
             i += 1;
         }
         i = pos;
         while i != 0 && result.len() < count {
             i -= 1;
-            result.extend(self.buckets[i].iter().cloned());
+            result.extend(self.buckets[i].iter().map(|entry| entry.peer_id));
         }
         result.truncate(count);
         result
@@ -90,7 +101,7 @@ impl KBucketsTable {
     /// # Returns
     ///
     /// Returns `true` if the peer was successfully added, `false` otherwise.
-    pub fn add_peer(&mut self, peer_id: PeerId, on_full: OnFullKBucket) -> bool {
+    pub fn add_peer(&mut self, peer_id: PeerId, curr_time: f64) -> bool {
         let key = Key::from_peer_id(peer_id);
         if key == &self.local_key {
             return false;
@@ -100,41 +111,33 @@ impl KBucketsTable {
             self.buckets.resize(pos + 1, Vec::with_capacity(*K_VALUE));
         }
         let bucket = &mut self.buckets[pos];
-        let pos = bucket.iter().position(|&id| id == peer_id);
+        let pos = bucket.iter().position(|entry| entry.peer_id == peer_id);
+        let entry = KBucketEntry {
+            peer_id,
+            last_seen: curr_time,
+        };
         match pos {
             Some(idx) => {
                 bucket.remove(idx);
-                bucket.push(peer_id);
+                bucket.push(entry);
             }
             None => {
                 if bucket.len() < *K_VALUE {
-                    bucket.push(peer_id);
-                } else {
-                    match on_full {
-                        OnFullKBucket::Ignore => {}
-                        OnFullKBucket::PingLeastRecentlySeen => {
-                            // TODO: ping the least recently seen node and replace if not responded
-                        }
-                        OnFullKBucket::ReplaceLeastRecentlySeen => {
-                            bucket[*K_VALUE - 1] = peer_id;
-                        }
-                        OnFullKBucket::ForceReplace(prev) => {
-                            if let Some(idx) = bucket.iter().position(|&id| id == prev) {
-                                bucket[idx] = peer_id;
-                            }
-                        }
+                    bucket.push(entry);
+                    return true;
+                }
+                let mut idx = None;
+                for (i, kb_entry) in bucket.iter().enumerate() {
+                    if curr_time - kb_entry.last_seen > CONFIG.kbuckets_refresh_interval {
+                        idx = Some(i);
                     }
+                }
+                if let Some(idx) = idx {
+                    bucket.remove(idx);
+                    bucket.push(entry);
                 }
             }
         }
         true
     }
-}
-
-/// The action to take when a k-bucket is full.
-pub enum OnFullKBucket {
-    Ignore,
-    PingLeastRecentlySeen,
-    ReplaceLeastRecentlySeen,
-    ForceReplace(PeerId),
 }

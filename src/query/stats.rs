@@ -16,6 +16,8 @@ pub struct QueriesStats {
     pub put_value_queries_failed: usize,
     pub ping_requests_cnt: usize,
     pub ping_responses_cnt: usize,
+    pub retrieve_data_queries_started: usize,
+    pub retrieve_data_queries_completed: usize,
 }
 
 impl QueriesStats {
