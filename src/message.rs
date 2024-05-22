@@ -19,10 +19,9 @@ pub struct FindNodeResponse {
 }
 
 #[derive(Clone, Serialize)]
-pub struct PingRequest {}
-
-#[derive(Clone, Serialize)]
-pub struct PingResponse {}
+pub struct FindNodeQueryTimeout {
+    pub query_id: QueryId,
+}
 
 #[derive(Clone, Serialize)]
 pub struct GetValueRequest {
@@ -41,11 +40,21 @@ pub struct GetValueResponse {
 }
 
 #[derive(Clone, Serialize)]
+pub struct GetValueQueryTimeout {
+    pub query_id: QueryId,
+}
+
+#[derive(Clone, Serialize)]
 pub struct PutValueRequest {
     /// The key of the value to store.
     pub key: Key,
     /// The value to store.
     pub record: Record,
+}
+
+#[derive(Clone, Serialize)]
+pub struct PutValueQueryTimeout {
+    pub query_id: QueryId,
 }
 
 #[derive(Clone, Serialize)]
@@ -59,6 +68,20 @@ pub struct RetrieveDataResponse {
     pub query_id: QueryId,
     pub data: Option<String>,
 }
+
+#[derive(Clone, Serialize)]
+pub struct RetrieveDataQueryTimeout {
+    pub query_id: QueryId,
+}
+
+#[derive(Clone, Serialize)]
+pub struct PingRequest {}
+
+#[derive(Clone, Serialize)]
+pub struct PingResponse {}
+
+#[derive(Clone, Serialize)]
+pub struct PingTimeout {}
 
 #[derive(Clone, Serialize)]
 pub struct BootstrapTimer {}

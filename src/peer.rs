@@ -1,9 +1,10 @@
 use crate::{
     kbucket::KBucketsTable,
     message::{
-        BootstrapTimer, FindNodeRequest, FindNodeResponse, GetValueRequest, GetValueResponse,
-        PingRequest, PingResponse, PutValueRequest, RepublishTimer, RetrieveDataRequest,
-        RetrieveDataResponse,
+        BootstrapTimer, FindNodeQueryTimeout, FindNodeRequest, FindNodeResponse,
+        GetValueQueryTimeout, GetValueRequest, GetValueResponse, PingRequest, PingResponse,
+        PingTimeout, PutValueQueryTimeout, PutValueRequest, RepublishTimer,
+        RetrieveDataQueryTimeout, RetrieveDataRequest, RetrieveDataResponse,
     },
     network::NetworkAgent,
     query::{
@@ -13,7 +14,7 @@ use crate::{
     storage::{LocalDHTStorage, LocalFileStorage, Record, RecordData},
     Key, PeerId, CONFIG, K_VALUE,
 };
-use dslab_core::{cast, Event, EventData, EventHandler, Simulation, SimulationContext};
+use dslab_core::{cast, log_info, Event, EventData, EventHandler, Simulation, SimulationContext};
 
 /// Represents a peer in the IPFS simulator.
 pub struct Peer {
@@ -107,6 +108,8 @@ impl Peer {
     /// The ID of the initiated query.
     pub fn find_node(&mut self, key: &Key, trigger: QueryTrigger) -> QueryId {
         let query_id = self.queries.next_query_id();
+        self.ctx
+            .emit_self(FindNodeQueryTimeout { query_id }, CONFIG.query_timeout);
         let (query_request, request) =
             FindNodeQuery::new(query_id, trigger, key.clone(), self.ctx.id());
         self.queries.add_find_node_query(query_id, query_request);
@@ -117,6 +120,8 @@ impl Peer {
 
     pub fn get_value(&mut self, key: Key) -> QueryId {
         let query_id = self.queries.next_query_id();
+        self.ctx
+            .emit_self(GetValueQueryTimeout { query_id }, CONFIG.query_timeout);
         self.find_node(&key, QueryTrigger::GetValue(query_id));
         let query = GetValueQuery::new(key);
         self.queries.add_get_value_query(query_id, query);
@@ -127,6 +132,8 @@ impl Peer {
     /// Puts a record into the DHT.
     pub fn put_value(&mut self, record: Record) -> QueryId {
         let query_id = self.queries.next_query_id();
+        self.ctx
+            .emit_self(PutValueQueryTimeout { query_id }, CONFIG.query_timeout);
         let query = PutValueQuery::new(record);
         let key = query.key();
         self.queries.add_put_value_query(query_id, query);
@@ -157,6 +164,8 @@ impl Peer {
 
     pub fn retrieve_data(&mut self, key: Key) -> QueryId {
         let query_id = self.get_value(key);
+        self.ctx
+            .emit_self(RetrieveDataQueryTimeout { query_id }, CONFIG.query_timeout);
         self.queries.add_retrieve_data_query(query_id);
         query_id
     }
@@ -233,6 +242,12 @@ impl Peer {
         }
     }
 
+    fn on_find_node_query_timeout(&mut self, query_id: QueryId) {
+        if self.queries.remove_find_node_query(query_id).is_some() {
+            self.stats.find_node_queries_failed += 1;
+        }
+    }
+
     fn on_get_value_request(&mut self, src_id: PeerId, query_id: QueryId, key: Key) {
         let record = self.dht_storage.get(&key).cloned();
         self.send_message(GetValueResponse { query_id, record }, src_id);
@@ -266,8 +281,20 @@ impl Peer {
         }
     }
 
+    fn on_get_value_query_timeout(&mut self, query_id: QueryId) {
+        if self.queries.remove_get_value_query(query_id).is_some() {
+            self.stats.get_value_queries_failed += 1;
+        }
+    }
+
     fn on_put_value_request(&mut self, key: Key, record: Record) {
         self.dht_storage.put(key, record);
+    }
+
+    fn on_put_value_query_timeout(&mut self, query_id: QueryId) {
+        if self.queries.remove_put_value_query(query_id).is_some() {
+            self.stats.put_value_queries_failed += 1;
+        }
     }
 
     fn on_retrieve_data_request(&mut self, src_id: PeerId, query_id: QueryId, key: Key) {
@@ -285,9 +312,14 @@ impl Peer {
     fn on_retrieve_data_response(&mut self, query_id: QueryId, data: Option<String>) {
         if let Some(data) = data {
             if self.queries.remove_retrieve_data_query(query_id) {
-                // TODO: log that received data
+                log_info!(self.ctx, "Data retrieved: {}", data);
+                println!("Data retrieved: {}", data);
             }
         }
+    }
+
+    fn on_retrieve_data_query_timeout(&mut self, query_id: QueryId) {
+        if self.queries.remove_retrieve_data_query(query_id) {}
     }
 
     fn on_ping_request(&mut self, src_id: PeerId) {
@@ -297,6 +329,10 @@ impl Peer {
 
     fn on_ping_response(&mut self) {
         self.stats.ping_responses_cnt += 1;
+    }
+
+    fn on_ping_timeout(&mut self) {
+        self.stats.ping_requests_failed += 1;
     }
 
     fn refresh_kbuckets_table(&mut self) {
@@ -338,14 +374,23 @@ impl EventHandler for Peer {
             } => {
                 self.on_find_node_response(event.src, query_id, closest_peers);
             }
+            FindNodeQueryTimeout { query_id } => {
+                self.on_find_node_query_timeout(query_id);
+            }
             GetValueRequest { query_id, key } => {
                 self.on_get_value_request(event.src, query_id, key);
             }
             GetValueResponse { query_id, record } => {
                 self.on_get_value_response(event.src, query_id, record);
             }
+            GetValueQueryTimeout { query_id } => {
+                self.on_get_value_query_timeout(query_id);
+            }
             PutValueRequest { key, record } => {
                 self.on_put_value_request(key, record);
+            }
+            PutValueQueryTimeout { query_id } => {
+                self.on_put_value_query_timeout(query_id);
             }
             RetrieveDataRequest { query_id, key } => {
                 self.on_retrieve_data_request(event.src, query_id, key);
@@ -353,11 +398,17 @@ impl EventHandler for Peer {
             RetrieveDataResponse { query_id, data } => {
                 self.on_retrieve_data_response(query_id, data);
             }
+            RetrieveDataQueryTimeout { query_id } => {
+                self.on_retrieve_data_query_timeout(query_id);
+            }
             PingRequest {} => {
                 self.on_ping_request(event.src);
             }
             PingResponse {} => {
                 self.on_ping_response();
+            }
+            PingTimeout {} => {
+                self.on_ping_timeout();
             }
             BootstrapTimer {} => {
                 self.refresh_kbuckets_table();

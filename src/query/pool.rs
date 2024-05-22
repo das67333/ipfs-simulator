@@ -33,8 +33,8 @@ impl QueriesPool {
     }
 
     /// Removes a `FindNodeQuery` from the pool.
-    pub fn remove_find_node_query(&mut self, query_id: QueryId) -> bool {
-        self.find_node_queries.remove(&query_id).is_some()
+    pub fn remove_find_node_query(&mut self, query_id: QueryId) -> Option<FindNodeQuery> {
+        self.find_node_queries.remove(&query_id)
     }
 
     /// Returns a mutable reference to the `FindNodeQuery` with the specified query ID, if it exists.

@@ -57,26 +57,36 @@ impl App {
         // for peer in self.peers.iter_mut() {
         //     peer.borrow_mut().find_random_node(QueryTrigger::Manual);
         // }
+        let key = self.peers[0].borrow_mut().publish_data("hahaha".to_owned());
+        println!("Key: {:?}", key);
 
-        let mut steps_cnt = 0;
-        while self.sim.step() && self.sim.time() < 3600.0 {
-            steps_cnt += 1;
-        }
-        println!("Simulation finished in {} steps", steps_cnt);
+        // let mut steps_cnt = 0;
+        // while self.sim.step() && self.sim.time() < 3600.0 {
+        //     steps_cnt += 1;
+        // }
+        self.sim.step_for_duration(3600.);
+        
+        self.peers[0].borrow_mut().retrieve_data(key);
+        self.sim.step_for_duration(3600.);
+
+        // println!("Simulation finished in {} steps", steps_cnt);
         println!("Simulation time: {:.3} seconds", self.sim.time());
 
-        let (mut total, mut correct) = (0, 0);
+        let mut stats = crate::query::QueriesStats::new();
         for peer in self.peers.iter() {
-            let stats = peer.borrow_mut().stats();
-            total += stats.find_node_queries_completed;
-            correct += stats.closest_peers_correct;
+            stats.merge(&peer.borrow_mut().stats());
         }
+        let (total, correct) = (
+            stats.find_node_queries_completed,
+            stats.closest_peers_correct,
+        );
         println!(
             "Correctness: {}/{} = {:.3}",
             correct,
             total * *crate::K_VALUE,
             correct as f64 / (total * *crate::K_VALUE) as f64
         );
+        println!("Stats: {:#?}", stats);
     }
 }
 

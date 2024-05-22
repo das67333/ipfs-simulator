@@ -11,6 +11,7 @@ pub struct SimulationConfig {
     pub record_publication_interval: f64,
     pub record_expiration_interval: f64,
     pub kbuckets_refresh_interval: f64,
+    pub query_timeout: f64,
     pub caching_max_peers: usize,
     pub enable_bootstrap: bool,
 }
@@ -90,6 +91,7 @@ impl SimulationConfig {
             record_publication_interval: toml.record_publication_interval,
             record_expiration_interval: toml.record_expiration_interval,
             kbuckets_refresh_interval: toml.kbuckets_refresh_interval,
+            query_timeout: toml.query_timeout,
             caching_max_peers: toml.caching_max_peers,
             enable_bootstrap: toml.enable_bootstrap,
         }

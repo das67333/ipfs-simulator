@@ -27,9 +27,10 @@ record_expiration_interval = 172800.0 # 48 hours
 # To keep the routing tables accurate and up to date,
 # IPFS refreshes the routing table every 10 minutes.
 kbuckets_refresh_interval = 600.0
+query_timeout = 60.0
 
 # Configuration for Kademlia "write-back" caching after successful lookups via 'get_record'
 # Up to `max_peers` closest peers not returning the record will receive it.
 caching_max_peers = 1
 
-enable_bootstrap = true
+enable_bootstrap = false

@@ -16,6 +16,7 @@ pub struct ConfigTOML {
     pub record_publication_interval: f64,
     pub record_expiration_interval: f64,
     pub kbuckets_refresh_interval: f64,
+    pub query_timeout: f64,
     pub caching_max_peers: usize,
     pub enable_bootstrap: bool,
 }
