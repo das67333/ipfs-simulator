@@ -77,8 +77,8 @@ impl App {
             stats.merge(&peer.borrow_mut().stats());
         }
         let (total, correct) = (
-            stats.find_node_queries_completed,
-            stats.closest_peers_correct,
+            stats.find_node_queries_completed as usize,
+            stats.closest_peers_correct as usize,
         );
         println!(
             "Correctness: {}/{} = {:.3}",
