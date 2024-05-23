@@ -1,4 +1,4 @@
-use crate::{network::NetworkAgent, peer::Peer, PeerId, CONFIG};
+use crate::{network::NetworkAgent, peer::Peer, query::QueryTrigger, PeerId, CONFIG};
 use dslab_core::{Simulation, SimulationContext};
 use std::{cell::RefCell, rc::Rc};
 
@@ -54,22 +54,29 @@ impl App {
     }
 
     pub fn run(&mut self) {
-        // for peer in self.peers.iter_mut() {
-        //     peer.borrow_mut().find_random_node(QueryTrigger::Manual);
-        // }
-        let key = self.peers[0].borrow_mut().publish_data("hahaha".to_owned());
-        println!("Key: {:?}", key);
+        let duration = std::env::var("DURATION")
+            .ok()
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap();
+        let mut keys = vec![];
+        for (i, peer) in self.peers.iter_mut().enumerate() {
+            // peer.borrow_mut().find_random_node(QueryTrigger::Manual);
+            let key = peer.borrow_mut().publish_data(format!("file_{}", i));
+            keys.push(key);
+        }
+        self.sim.step_until_time(duration);
+        keys.rotate_left(15);
 
-        // let mut steps_cnt = 0;
-        // while self.sim.step() && self.sim.time() < 3600.0 {
-        //     steps_cnt += 1;
-        // }
-        self.sim.step_for_duration(3600.);
-        
-        self.peers[0].borrow_mut().retrieve_data(key);
-        self.sim.step_for_duration(3600.);
+        for (key, peer) in keys.iter().cloned().zip(self.peers.iter()) {
+            peer.borrow_mut().retrieve_data(key);
+        }
 
-        // println!("Simulation finished in {} steps", steps_cnt);
+        let mut steps_cnt = 0;
+        while self.sim.step() {
+            steps_cnt += 1;
+        }
+
+        println!("Simulation finished in {} steps", steps_cnt);
         println!("Simulation time: {:.3} seconds", self.sim.time());
 
         let mut stats = crate::query::QueriesStats::new();

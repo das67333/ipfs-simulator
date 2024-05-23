@@ -19,6 +19,7 @@ pub struct ConfigTOML {
     pub query_timeout: f64,
     pub caching_max_peers: usize,
     pub enable_bootstrap: bool,
+    pub enable_republishing: bool,
 }
 
 impl ConfigTOML {

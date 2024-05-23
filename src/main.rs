@@ -9,8 +9,8 @@ fn main() {
     //     .format_timestamp(None)
     //     .init();
 
-    let timer = Instant::now();
     let mut app = App::new();
+    let timer = Instant::now();
     app.run();
     println!("Simulation finished in {:?}", timer.elapsed());
 }

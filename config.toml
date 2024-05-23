@@ -34,3 +34,4 @@ query_timeout = 60.0
 caching_max_peers = 1
 
 enable_bootstrap = false
+enable_republishing = false

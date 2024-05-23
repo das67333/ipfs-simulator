@@ -148,10 +148,12 @@ impl Peer {
         self.file_storage.put(key.clone(), data);
         self.dht_storage.put(key.clone(), record.clone());
         self.put_value(record);
-        self.ctx.emit_self(
-            RepublishTimer { key: key.clone() },
-            CONFIG.record_publication_interval,
-        );
+        if CONFIG.enable_republishing {
+            self.ctx.emit_self(
+                RepublishTimer { key: key.clone() },
+                CONFIG.record_publication_interval,
+            );
+        }
         key
     }
 
@@ -167,6 +169,7 @@ impl Peer {
         self.ctx
             .emit_self(RetrieveDataQueryTimeout { query_id }, CONFIG.query_timeout);
         self.queries.add_retrieve_data_query(query_id);
+        self.stats.retrieve_data_queries_started += 1;
         query_id
     }
 
@@ -312,14 +315,16 @@ impl Peer {
     fn on_retrieve_data_response(&mut self, query_id: QueryId, data: Option<String>) {
         if let Some(data) = data {
             if self.queries.remove_retrieve_data_query(query_id) {
+                self.stats.retrieve_data_queries_completed += 1;
                 log_info!(self.ctx, "Data retrieved: {}", data);
-                println!("Data retrieved: {}", data);
             }
         }
     }
 
     fn on_retrieve_data_query_timeout(&mut self, query_id: QueryId) {
-        if self.queries.remove_retrieve_data_query(query_id) {}
+        if self.queries.remove_retrieve_data_query(query_id) {
+            self.stats.retrieve_data_queries_failed += 1;
+        }
     }
 
     fn on_ping_request(&mut self, src_id: PeerId) {

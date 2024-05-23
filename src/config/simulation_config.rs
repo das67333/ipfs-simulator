@@ -14,6 +14,7 @@ pub struct SimulationConfig {
     pub query_timeout: f64,
     pub caching_max_peers: usize,
     pub enable_bootstrap: bool,
+    pub enable_republishing: bool,
 }
 
 impl SimulationConfig {
@@ -94,6 +95,7 @@ impl SimulationConfig {
             query_timeout: toml.query_timeout,
             caching_max_peers: toml.caching_max_peers,
             enable_bootstrap: toml.enable_bootstrap,
+            enable_republishing: toml.enable_republishing,
         }
     }
 }

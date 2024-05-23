@@ -20,6 +20,7 @@ pub struct QueriesStats {
     pub ping_requests_failed: u32,
     pub retrieve_data_queries_started: u32,
     pub retrieve_data_queries_completed: u32,
+    pub retrieve_data_queries_failed: u32,
 }
 
 impl QueriesStats {
@@ -56,5 +57,6 @@ impl QueriesStats {
         self.ping_requests_failed += other.ping_requests_failed;
         self.retrieve_data_queries_started += other.retrieve_data_queries_started;
         self.retrieve_data_queries_completed += other.retrieve_data_queries_completed;
+        self.retrieve_data_queries_failed += other.retrieve_data_queries_failed;
     }
 }
