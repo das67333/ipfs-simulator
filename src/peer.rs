@@ -57,9 +57,25 @@ impl Peer {
         self.kbuckets.add_peer(peer_id, curr_time);
     }
 
+    pub fn clear_storage(&mut self) {
+        self.dht_storage.clear();
+        self.file_storage.clear();
+    }
+
     /// Returns the statistics related to queries.
     pub fn stats(&mut self) -> QueriesStats {
         std::mem::take(&mut self.stats)
+    }
+
+    pub fn fill_kbuckets_unfair(&mut self) {
+        for i in 0..CONFIG.num_peers.ilog2() as usize {
+            for _ in 0..*crate::K_VALUE {
+                let key = Key::random_in_bucket(&self.ctx, self.kbuckets.local_key(), i);
+                let peers = crate::KEYS_TREE.find_closest_peers(&key, 1);
+                let peer_id = peers.iter().next().unwrap();
+                self.kbuckets.add_peer(*peer_id, self.ctx.time());
+            }
+        }
     }
 
     /// Returns the ID of the peer.
@@ -343,7 +359,7 @@ impl Peer {
     fn refresh_kbuckets_table(&mut self) {
         self.dht_storage.remove_expired(self.ctx.time());
         for i in 0..self.kbuckets.buckets_count().min(15) {
-            let key = Key::random_in_bucket(&self.ctx, i);
+            let key = Key::random_in_bucket(&self.ctx, self.kbuckets.local_key(), i);
             self.find_node(&key, QueryTrigger::Bootstrap);
         }
         let local_key = self.kbuckets.local_key();

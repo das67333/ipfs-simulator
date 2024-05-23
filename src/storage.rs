@@ -63,6 +63,10 @@ impl LocalDHTStorage {
     pub fn remove_expired(&mut self, curr_time: f64) {
         self.records.retain(|_, record| record.expires_at > curr_time);
     }
+
+    pub fn clear(&mut self) {
+        self.records.clear();
+    }
 }
 
 #[derive(Debug, Default)]
@@ -85,5 +89,9 @@ impl LocalFileStorage {
 
     pub fn remove(&mut self, key: &Key) -> bool {
         self.data.remove(key).is_some()
+    }
+
+    pub fn clear(&mut self) {
+        self.data.clear();
     }
 }

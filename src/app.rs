@@ -46,54 +46,80 @@ impl App {
             self.peers.push(peer);
         }
         for i in 0..n {
-            let mut peer = self.peers[i as usize].borrow_mut();
-            for j in (0..n).map(|_| self.sim.gen_range(0..n)) {
-                peer.add_peer(j, 0.0);
-            }
+            self.peers[i as usize].borrow_mut().fill_kbuckets_unfair();
         }
     }
 
-    pub fn run(&mut self) {
-        let duration = std::env::var("DURATION")
-            .ok()
-            .and_then(|s| s.parse::<f64>().ok())
-            .unwrap();
-        let mut keys = vec![];
-        for (i, peer) in self.peers.iter_mut().enumerate() {
-            // peer.borrow_mut().find_random_node(QueryTrigger::Manual);
-            let key = peer.borrow_mut().publish_data(format!("file_{}", i));
-            keys.push(key);
-        }
-        self.sim.step_until_time(duration);
-        keys.rotate_left(15);
-
-        for (key, peer) in keys.iter().cloned().zip(self.peers.iter()) {
-            peer.borrow_mut().retrieve_data(key);
-        }
-
-        let mut steps_cnt = 0;
-        while self.sim.step() {
-            steps_cnt += 1;
-        }
-
-        println!("Simulation finished in {} steps", steps_cnt);
-        println!("Simulation time: {:.3} seconds", self.sim.time());
-
+    pub fn summarize_stats(&self) {
         let mut stats = crate::query::QueriesStats::new();
         for peer in self.peers.iter() {
             stats.merge(&peer.borrow_mut().stats());
         }
-        let (total, correct) = (
-            stats.find_node_queries_completed as usize,
-            stats.closest_peers_correct as usize,
-        );
-        println!(
-            "Correctness: {}/{} = {:.3}",
-            correct,
-            total * *crate::K_VALUE,
-            correct as f64 / (total * *crate::K_VALUE) as f64
-        );
-        println!("Stats: {:#?}", stats);
+        println!("{:#?}", stats);
+    }
+
+    pub fn run(&mut self) {
+        // let duration = std::env::var("DURATION")
+        //     .ok()
+        //     .and_then(|s| s.parse::<f64>().ok())
+        //     .unwrap();
+        const KEYS_CNT: usize = 10_000;
+
+        for i in 0..60 {
+            // [-0.35, 0.25]
+            let duration = (i - 35) as f64 * 0.01;
+            let blocks = (0..KEYS_CNT)
+                .map(|i| format!("file_{}", i))
+                .collect::<Vec<_>>();
+            let keys = blocks
+                .iter()
+                .map(|block| crate::Key::from_sha256(block.as_bytes()))
+                .collect::<Vec<_>>();
+
+            if duration >= 0. {
+                for block in blocks.iter().cloned() {
+                    self.peers[self.sim.gen_range(0..CONFIG.num_peers) as usize]
+                        .borrow_mut()
+                        .publish_data(block);
+                }
+                self.sim.step_until_time(self.sim.time() + duration);
+                for key in keys.iter().cloned() {
+                    self.peers[self.sim.gen_range(0..CONFIG.num_peers) as usize]
+                        .borrow_mut()
+                        .retrieve_data(key);
+                }
+            } else {
+                for key in keys.iter().cloned() {
+                    self.peers[self.sim.gen_range(0..CONFIG.num_peers) as usize]
+                        .borrow_mut()
+                        .retrieve_data(key);
+                }
+                self.sim.step_until_time(self.sim.time() - duration);
+                for block in blocks.iter().cloned() {
+                    self.peers[self.sim.gen_range(0..CONFIG.num_peers) as usize]
+                        .borrow_mut()
+                        .publish_data(block);
+                }
+            }
+
+            self.sim.step_until_no_events();
+            for peer in self.peers.iter() {
+                peer.borrow_mut().clear_storage();
+            }
+
+            // println!("Simulation time: {:.3} seconds", self.sim.time());
+            let mut stats = crate::query::QueriesStats::new();
+            for peer in self.peers.iter() {
+                stats.merge(&peer.borrow_mut().stats());
+            }
+            println!(
+                "{:.3} {} {} {}",
+                duration,
+                stats.retrieve_data_queries_started,
+                stats.retrieve_data_queries_completed,
+                stats.retrieve_data_queries_failed
+            );
+        }
     }
 }
 

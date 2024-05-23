@@ -5,7 +5,7 @@ k = 20
 # usize, max number of concurrent requests of a peer
 alpha = 3
 # u32, max number of peers in the network
-num_peers = 10_000
+num_peers = 100_000
 # distribution of the delays between peers
 # valid values are 'constant', 'uniform', 'positive_normal'
 # if 'constant', the 'delay_mean' key should be provided
@@ -13,8 +13,8 @@ num_peers = 10_000
 # if 'positive_normal' => 'delay_mean' and 'delay_std_dev'
 # all of the must be non-negative
 delay_distribution = 'uniform'
-delay_min = 1.0
-delay_max = 3.0
+delay_min = 0.010
+delay_max = 0.100
 # network topology of the peers
 # valid values are 'full', 'ring', 'star'
 # 'full' requires 'first_id' and 'last_id' keys
@@ -32,6 +32,7 @@ query_timeout = 60.0
 # Configuration for Kademlia "write-back" caching after successful lookups via 'get_record'
 # Up to `max_peers` closest peers not returning the record will receive it.
 caching_max_peers = 1
-
+# enable bootstrap and records expiration
 enable_bootstrap = false
+# enable republishing of records
 enable_republishing = false
