@@ -96,7 +96,7 @@ impl KBucketsTable {
     /// # Arguments
     ///
     /// * `peer_id` - The ID of the peer to add.
-    /// * `on_full` - The action to take when the bucket is full.
+    /// * `curr_time` - The current simulation time.
     ///
     /// # Returns
     ///

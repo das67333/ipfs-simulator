@@ -1,6 +1,7 @@
 use super::toml_parser::ConfigTOML;
 use crate::network::{DelayDistribution, Topology};
 
+/// Represents the configuration of the IPFS simulator.
 pub struct SimulationConfig {
     pub seed: u64,
     pub k: usize,
@@ -18,11 +19,13 @@ pub struct SimulationConfig {
 }
 
 impl SimulationConfig {
+    /// Creates a new `SimulationConfig` instance from the default configuration file.
     pub fn from_default_config_file() -> Self {
         let toml = ConfigTOML::from_file("config.toml");
         Self::from_toml(toml)
     }
 
+    /// Creates a new `SimulationConfig` instance from the specified TOML configuration file.
     fn from_toml(toml: ConfigTOML) -> Self {
         let delay_distribution = match toml.delay_distribution.as_str() {
             "constant" => {

@@ -28,7 +28,17 @@ pub struct Peer {
 }
 
 impl Peer {
-    /// Creates a new peer within the given simulation. Its `name` should be unique.
+    /// Creates a new peer within the given simulation.
+    ///
+    /// # Arguments
+    ///
+    /// * `sim` - A mutable reference to the simulation.
+    /// * `name` - The name of the peer. Should be unique.
+    /// * `network` - The network agent associated with the peer.
+    ///
+    /// # Returns
+    ///
+    /// A new instance of `Peer`.
     pub fn new(sim: &mut Simulation, name: impl AsRef<str>, network: NetworkAgent) -> Self {
         let ctx = sim.create_context(name);
         let local_key = Key::from_peer_id(ctx.id());
@@ -53,20 +63,34 @@ impl Peer {
     }
 
     /// Adds a peer to the k-buckets table.
+    ///
+    /// # Arguments
+    ///
+    /// * `peer_id` - The ID of the peer to add.
+    /// * `curr_time` - The current simulation time.
     pub fn add_peer(&mut self, peer_id: PeerId, curr_time: f64) {
         self.kbuckets.add_peer(peer_id, curr_time);
     }
 
+    /// Clears the storage of the peer.
+    ///
+    /// This method clears both the DHT storage and the file storage.
     pub fn clear_storage(&mut self) {
         self.dht_storage.clear();
         self.file_storage.clear();
     }
 
     /// Returns the statistics related to queries.
+    ///
+    /// # Returns
+    ///
+    /// The statistics related to queries.
     pub fn stats(&mut self) -> QueriesStats {
         std::mem::take(&mut self.stats)
     }
 
+    /// Effectively fills the k-buckets table with random peers.
+    /// This method uses information that is not available in the real world.
     pub fn fill_kbuckets_unfair(&mut self) {
         for i in 0..CONFIG.num_peers.ilog2() as usize {
             for _ in 0..*crate::K_VALUE {
@@ -112,7 +136,7 @@ impl Peer {
         self.find_node(&key, trigger)
     }
 
-    /// Finds the closest nodes to the given key.
+    /// Initaites an iterative search for the closest nodes to the given key.
     ///
     /// # Arguments
     ///
@@ -134,6 +158,15 @@ impl Peer {
         query_id
     }
 
+    /// Initiates a query to get the DHT record associated with a key.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to get the record for.
+    ///
+    /// # Returns
+    ///
+    /// The ID of the initiated query.
     pub fn get_value(&mut self, key: Key) -> QueryId {
         let query_id = self.queries.next_query_id();
         self.ctx
@@ -145,7 +178,15 @@ impl Peer {
         query_id
     }
 
-    /// Puts a record into the DHT.
+    /// Initiates a query to put the given record into the DHT.
+    ///
+    /// # Arguments
+    ///
+    /// * `record` - The record to put into the DHT.
+    ///
+    /// # Returns
+    ///
+    /// The ID of the initiated query.
     pub fn put_value(&mut self, record: Record) -> QueryId {
         let query_id = self.queries.next_query_id();
         self.ctx
@@ -158,6 +199,15 @@ impl Peer {
         query_id
     }
 
+    /// Publishes data into the IPFS network.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - The data to publish.
+    ///
+    /// # Returns
+    ///
+    /// The key associated with the published data.
     pub fn publish_data(&mut self, data: String) -> Key {
         let key = Key::from_sha256(data.as_bytes());
         let record = Record::new_provider_record(self.id(), key.clone(), self.ctx.time());
@@ -173,6 +223,12 @@ impl Peer {
         key
     }
 
+    /// Removes the data associated with the given key from the IPFS network
+    /// by interrupting periodic republishing.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key associated with the data to remove.
     pub fn remove_data(&mut self, key: Key) {
         if let (Some(_), Some(_)) = (self.dht_storage.get(&key), self.file_storage.get(&key)) {
             self.dht_storage.remove(&key);
@@ -180,6 +236,15 @@ impl Peer {
         }
     }
 
+    /// Retrieves the data associated with the given key from IPFS network.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key associated with the data to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// The ID of the initiated query.
     pub fn retrieve_data(&mut self, key: Key) -> QueryId {
         let query_id = self.get_value(key);
         self.ctx
@@ -189,6 +254,13 @@ impl Peer {
         query_id
     }
 
+    /// Handles a `FindNodeRequest` message.
+    ///
+    /// # Arguments
+    ///
+    /// * `src_id` - The ID of the source peer.
+    /// * `query_id` - The ID of the query that made the request.
+    /// * `key` - The key to find the closest peers to.
     fn on_find_node_request(&mut self, src_id: PeerId, query_id: QueryId, key: Key) {
         let closest_peers = self
             .kbuckets
@@ -202,6 +274,13 @@ impl Peer {
         );
     }
 
+    /// Handles a `FindNodeResponse` message.
+    ///
+    /// # Arguments
+    ///
+    /// * `src_id` - The ID of the source peer.
+    /// * `query_id` - The ID of the query that made the request.
+    /// * `closest_peers` - The closest peers to the target key.
     fn on_find_node_response(
         &mut self,
         src_id: PeerId,
@@ -261,12 +340,24 @@ impl Peer {
         }
     }
 
+    /// Removes a `FindNodeQuery` from the pool of queries if it hasn't completed yet.
+    ///
+    /// # Arguments
+    ///
+    /// * `query_id` - The ID of the query to remove.
     fn on_find_node_query_timeout(&mut self, query_id: QueryId) {
         if self.queries.remove_find_node_query(query_id).is_some() {
             self.stats.find_node_queries_failed += 1;
         }
     }
 
+    /// Handles a `GetValueRequest` message.
+    ///
+    /// # Arguments
+    ///
+    /// * `src_id` - The ID of the source peer.
+    /// * `query_id` - The ID of the query that made the request.
+    /// * `key` - The key to get the value for.
     fn on_get_value_request(&mut self, src_id: PeerId, query_id: QueryId, key: Key) {
         let record = self.dht_storage.get(&key).cloned();
         self.send_message(GetValueResponse { query_id, record }, src_id);
@@ -300,22 +391,45 @@ impl Peer {
         }
     }
 
+    /// Removes a `GetValueQuery` from the pool of queries if it hasn't completed yet.
+    ///
+    /// # Arguments
+    ///
+    /// * `query_id` - The ID of the query to remove.
     fn on_get_value_query_timeout(&mut self, query_id: QueryId) {
         if self.queries.remove_get_value_query(query_id).is_some() {
             self.stats.get_value_queries_failed += 1;
         }
     }
 
+    /// Handles a `PutValueRequest` message.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to put the value for.
+    /// * `record` - The record to put.
     fn on_put_value_request(&mut self, key: Key, record: Record) {
         self.dht_storage.put(key, record);
     }
 
+    /// Removes a `PutValueQuery` from the pool of queries if it hasn't completed yet.
+    ///
+    /// # Arguments
+    ///
+    /// * `query_id` - The ID of the query to remove.
     fn on_put_value_query_timeout(&mut self, query_id: QueryId) {
         if self.queries.remove_put_value_query(query_id).is_some() {
             self.stats.put_value_queries_failed += 1;
         }
     }
 
+    /// Handles a `RetrieveDataRequest` message.
+    ///
+    /// # Arguments
+    ///
+    /// * `src_id` - The ID of the source peer.
+    /// * `query_id` - The ID of the query that made the request.
+    /// * `key` - The key to retrieve the data for.
     fn on_retrieve_data_request(&mut self, src_id: PeerId, query_id: QueryId, key: Key) {
         if let Some(data) = self.file_storage.get(&key) {
             self.send_message(
@@ -328,6 +442,12 @@ impl Peer {
         }
     }
 
+    /// Handles a `RetrieveDataResponse` message.
+    ///
+    /// # Arguments
+    ///
+    /// * `query_id` - The ID of the query that made the request.
+    /// * `data` - The data retrieved.
     fn on_retrieve_data_response(&mut self, query_id: QueryId, data: Option<String>) {
         if let Some(data) = data {
             if self.queries.remove_retrieve_data_query(query_id) {
@@ -337,25 +457,44 @@ impl Peer {
         }
     }
 
+    /// Removes a `RetrieveDataQuery` from the pool of queries if it hasn't completed yet.
+    ///
+    /// # Arguments
+    ///
+    /// * `query_id` - The ID of the query to remove.
     fn on_retrieve_data_query_timeout(&mut self, query_id: QueryId) {
         if self.queries.remove_retrieve_data_query(query_id) {
             self.stats.retrieve_data_queries_failed += 1;
         }
     }
 
+    /// Handles a `PingRequest` message.
+    ///
+    /// # Arguments
+    ///
+    /// * `src_id` - The ID of the source peer.
     fn on_ping_request(&mut self, src_id: PeerId) {
         self.stats.ping_requests_cnt += 1;
         self.send_message(PingResponse {}, src_id);
     }
 
+    /// Handles a `PingResponse` message.
     fn on_ping_response(&mut self) {
         self.stats.ping_responses_cnt += 1;
     }
 
+    /// Ping timeouts are not used and not implemented to save memory.
     fn on_ping_timeout(&mut self) {
         self.stats.ping_requests_failed += 1;
     }
 
+    /// Refreshes the k-buckets table by querying the peers closest to some
+    /// random keys that fit in different buckets to keep the table up-to-date.
+    ///
+    /// This method is called periodically to refresh the k-buckets table.
+    /// The local key is also queried to add the peers closest to the local key.
+    ///
+    /// The method also removes expired records from the DHT storage.
     fn refresh_kbuckets_table(&mut self) {
         self.dht_storage.remove_expired(self.ctx.time());
         for i in 0..self.kbuckets.buckets_count().min(15) {
@@ -368,6 +507,12 @@ impl Peer {
             .emit_self(BootstrapTimer {}, CONFIG.kbuckets_refresh_interval);
     }
 
+    /// Republishes the record associated with the given key.
+    /// This method is called periodically to republish the record.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `key` - The key associated with the record to republish.
     fn on_republish_timer(&mut self, key: Key) {
         if let (Some(record), Some(_)) = (
             self.dht_storage.get(&key).cloned(),

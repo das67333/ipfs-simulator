@@ -36,6 +36,7 @@ impl Key {
         &KEYS_POOL[peer_id as usize]
     }
 
+    /// Generates a random key in the bucket at the given index.
     pub fn random_in_bucket(ctx: &SimulationContext, local_key: Key, index: usize) -> Self {
         let result = Self::random(ctx).0;
         let mask = U256::MAX >> index;

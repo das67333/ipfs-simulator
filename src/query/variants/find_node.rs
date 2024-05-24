@@ -23,7 +23,17 @@ pub struct FindNodeQuery {
 
 impl FindNodeQuery {
     /// Creates a new `FindNodeQuery` instance.
-    /// Returns the query and the request to send to itself.
+    /// 
+    /// # Arguments
+    /// 
+    /// * `query_id` - The ID of the query.
+    /// * `trigger` - The trigger that initiated the query.
+    /// * `target_key` - The key to find the closest peers to.
+    /// * `self_id` - The ID of the peer that initiated the query.
+    /// 
+    /// # Returns
+    /// 
+    /// A tuple containing the query and the request to send to itself.
     pub fn new(
         query_id: QueryId,
         trigger: QueryTrigger,
@@ -49,6 +59,7 @@ impl FindNodeQuery {
         (query, request)
     }
 
+    /// Returns the trigger that initiated the query.
     pub fn trigger(&self) -> QueryTrigger {
         self.trigger.clone()
     }
@@ -120,6 +131,11 @@ impl FindNodeQuery {
         QueryState::InProgress(result)
     }
 
+    /// Pops the next peer from the list of next peers and moves it to the list of waiting peers.
+    /// 
+    /// # Returns
+    /// 
+    /// The ID of the next peer, if it exists.
     fn pop_next_peer(&mut self) -> Option<PeerId> {
         let next_peer = self.peers_next.pop();
         if let Some(peer_id) = next_peer {
@@ -128,7 +144,8 @@ impl FindNodeQuery {
         next_peer
     }
 
-    /// Checks if the query is completed and returns the list of closest peers if so.
+    /// Checks if the query is completed and returns the list
+    /// of closest peers if so.
     fn check_if_completed(&mut self) -> Option<Vec<PeerId>> {
         let key_func = self.key_func();
         if self.peers_responded.len() >= *K_VALUE {
@@ -145,7 +162,8 @@ impl FindNodeQuery {
         None
     }
 
-    /// Returns a key function for sorting peers by distance to the target key in descending order.
+    /// Returns a key function for sorting peers by distance to the target key
+    /// in descending order.
     fn key_func(&self) -> impl Fn(&PeerId) -> Distance {
         let target_key = self.target_key.clone();
         move |&peer_id| !Key::from_peer_id(peer_id).distance(&target_key)
@@ -155,7 +173,14 @@ impl FindNodeQuery {
 /// Calculates the correctness of the obtained results
 /// (number of nodes included in the correct answer).
 ///
-/// This method is slow as it iterates over all peers' keys in the network.
+/// # Arguments
+/// 
+/// * `target_key` - The key used in the query.
+/// * `result` - The list of peers returned by the query.
+/// 
+/// # Returns
+/// 
+/// The number of peers that are included in the correct answer.
 pub fn evaluate_closest_peers(target_key: Key, result: &[PeerId]) -> usize {
     let correct_result = KEYS_TREE.find_closest_peers(&target_key, result.len());
     result

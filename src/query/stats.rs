@@ -29,7 +29,7 @@ impl QueriesStats {
         Self::default()
     }
 
-    /// Updating the statistics by evaluating the `FindNodeQuery`.
+    /// Updating the statistics by evaluating the `FindNodeQuery` results.
     ///
     /// # Arguments
     ///
@@ -40,6 +40,7 @@ impl QueriesStats {
         self.closest_peers_correct += evaluate_closest_peers(target_key, peers) as u64;
     }
 
+    /// Merges the statistics from another instance of `QueriesStats` into this one.
     pub fn merge(&mut self, other: &Self) {
         self.closest_peers_total += other.closest_peers_total;
         self.closest_peers_correct += other.closest_peers_correct;

@@ -11,7 +11,7 @@ num_peers = 100_000
 # if 'constant', the 'delay_mean' key should be provided
 # if 'uniform' => 'delay_min' and 'delay_max'
 # if 'positive_normal' => 'delay_mean' and 'delay_std_dev'
-# all of the must be non-negative
+# all of them must be non-negative
 delay_distribution = 'uniform'
 delay_min = 0.010
 delay_max = 0.100

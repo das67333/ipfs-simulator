@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::path::Path;
 
+/// Represents the structure to parse the configuration file into.
 #[derive(Debug, Deserialize)]
 pub struct ConfigTOML {
     pub seed: u64,
@@ -23,6 +24,7 @@ pub struct ConfigTOML {
 }
 
 impl ConfigTOML {
+    /// Parses the configuration from a TOML file.
     pub fn from_file(path: impl AsRef<Path>) -> Self {
         let data = std::fs::read_to_string(path).expect("Failed to read config file");
         toml::from_str(&data).expect("Failed to parse config")
