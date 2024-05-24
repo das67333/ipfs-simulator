@@ -23,16 +23,16 @@ pub struct FindNodeQuery {
 
 impl FindNodeQuery {
     /// Creates a new `FindNodeQuery` instance.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `query_id` - The ID of the query.
     /// * `trigger` - The trigger that initiated the query.
     /// * `target_key` - The key to find the closest peers to.
     /// * `self_id` - The ID of the peer that initiated the query.
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// A tuple containing the query and the request to send to itself.
     pub fn new(
         query_id: QueryId,
@@ -132,9 +132,9 @@ impl FindNodeQuery {
     }
 
     /// Pops the next peer from the list of next peers and moves it to the list of waiting peers.
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// The ID of the next peer, if it exists.
     fn pop_next_peer(&mut self) -> Option<PeerId> {
         let next_peer = self.peers_next.pop();
@@ -174,12 +174,12 @@ impl FindNodeQuery {
 /// (number of nodes included in the correct answer).
 ///
 /// # Arguments
-/// 
+///
 /// * `target_key` - The key used in the query.
 /// * `result` - The list of peers returned by the query.
-/// 
+///
 /// # Returns
-/// 
+///
 /// The number of peers that are included in the correct answer.
 pub fn evaluate_closest_peers(target_key: Key, result: &[PeerId]) -> usize {
     let correct_result = KEYS_TREE.find_closest_peers(&target_key, result.len());

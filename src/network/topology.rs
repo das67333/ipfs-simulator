@@ -1,7 +1,7 @@
 use crate::PeerId;
 
 /// Represents different network topologies.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Topology {
     /// A full network topology where all peers are connected to each other.
     Full,

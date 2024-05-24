@@ -2,7 +2,14 @@ use super::toml_parser::ConfigTOML;
 use crate::network::{DelayDistribution, Topology};
 
 /// Represents the configuration of the IPFS simulator.
+#[derive(Debug)]
 pub struct SimulationConfig {
+    pub log_level_filter: log::LevelFilter,
+    pub log_file_path: Option<String>,
+    pub enable_user_load_generation: bool,
+    pub user_load_block_size: Option<usize>,
+    pub user_load_blocks_pool_size: Option<usize>,
+    pub user_load_events_interval: Option<f64>,
     pub seed: u64,
     pub k: usize,
     pub alpha: usize,
@@ -27,6 +34,29 @@ impl SimulationConfig {
 
     /// Creates a new `SimulationConfig` instance from the specified TOML configuration file.
     fn from_toml(toml: ConfigTOML) -> Self {
+        let log_level_filter = match toml.log_level_filter.as_str() {
+            "off" => log::LevelFilter::Off,
+            "error" => log::LevelFilter::Error,
+            "warn" => log::LevelFilter::Warn,
+            "info" => log::LevelFilter::Info,
+            "debug" => log::LevelFilter::Debug,
+            "trace" => log::LevelFilter::Trace,
+            _ => panic!("invalid log_level_filter"),
+        };
+        if toml.enable_user_load_generation {
+            assert!(
+                toml.user_load_block_size.is_some(),
+                "missing user_load_block_size"
+            );
+            assert!(
+                toml.user_load_blocks_pool_size.is_some(),
+                "missing user_load_blocks_pool_size"
+            );
+            assert!(
+                toml.user_load_events_interval.is_some(),
+                "missing user_load_events_interval"
+            );
+        }
         let delay_distribution = match toml.delay_distribution.as_str() {
             "constant" => {
                 let mean = match toml.delay_mean {
@@ -86,6 +116,12 @@ impl SimulationConfig {
         };
 
         Self {
+            log_level_filter,
+            log_file_path: toml.log_file_path,
+            enable_user_load_generation: toml.enable_user_load_generation,
+            user_load_block_size: toml.user_load_block_size,
+            user_load_blocks_pool_size: toml.user_load_blocks_pool_size,
+            user_load_events_interval: toml.user_load_events_interval,
             seed: toml.seed,
             k: toml.k,
             alpha: toml.alpha,

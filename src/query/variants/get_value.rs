@@ -10,13 +10,13 @@ pub struct GetValueQuery {
 
 impl GetValueQuery {
     /// Creates a new `GetValueQuery` instance.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `key` - The key to retrieve the value for.
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// A new `GetValueQuery` instance.
     pub fn new(key: Key) -> Self {
         Self {
@@ -31,14 +31,14 @@ impl GetValueQuery {
     }
 
     /// Handles a response to the query.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `peer` - The peer that sent the response.
     /// * `record` - The record associated with the key, if it was found.
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// If the query is completed, returns the record and a list of pairs
     /// of peers and requests to send to them.
     pub fn on_response(

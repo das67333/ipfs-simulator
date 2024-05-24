@@ -14,7 +14,8 @@ use crate::{
     storage::{LocalDHTStorage, LocalFileStorage, Record, RecordData},
     Key, PeerId, CONFIG, K_VALUE,
 };
-use dslab_core::{cast, log_info, Event, EventData, EventHandler, Simulation, SimulationContext};
+use dslab_core::{cast, Event, EventData, EventHandler, Simulation, SimulationContext};
+use log::Level;
 
 /// Represents a peer in the IPFS simulator.
 pub struct Peer {
@@ -76,6 +77,7 @@ impl Peer {
     ///
     /// This method clears both the DHT storage and the file storage.
     pub fn clear_storage(&mut self) {
+        self.log(Level::Debug, "Cleared storage");
         self.dht_storage.clear();
         self.file_storage.clear();
     }
@@ -148,6 +150,10 @@ impl Peer {
     /// The ID of the initiated query.
     pub fn find_node(&mut self, key: &Key, trigger: QueryTrigger) -> QueryId {
         let query_id = self.queries.next_query_id();
+        self.log(
+            Level::Debug,
+            &format!("Initiated FindNodeQuery with id={}", query_id),
+        );
         self.ctx
             .emit_self(FindNodeQueryTimeout { query_id }, CONFIG.query_timeout);
         let (query_request, request) =
@@ -169,6 +175,10 @@ impl Peer {
     /// The ID of the initiated query.
     pub fn get_value(&mut self, key: Key) -> QueryId {
         let query_id = self.queries.next_query_id();
+        self.log(
+            Level::Debug,
+            &format!("Initiated GetValueQuery with id={}", query_id),
+        );
         self.ctx
             .emit_self(GetValueQueryTimeout { query_id }, CONFIG.query_timeout);
         self.find_node(&key, QueryTrigger::GetValue(query_id));
@@ -189,6 +199,10 @@ impl Peer {
     /// The ID of the initiated query.
     pub fn put_value(&mut self, record: Record) -> QueryId {
         let query_id = self.queries.next_query_id();
+        self.log(
+            Level::Debug,
+            &format!("Initiated PutValueQuery with id={}", query_id),
+        );
         self.ctx
             .emit_self(PutValueQueryTimeout { query_id }, CONFIG.query_timeout);
         let query = PutValueQuery::new(record);
@@ -209,6 +223,10 @@ impl Peer {
     ///
     /// The key associated with the published data.
     pub fn publish_data(&mut self, data: String) -> Key {
+        self.log(
+            Level::Info,
+            &format!("Initiated publishing data \"{}\"", data),
+        );
         let key = Key::from_sha256(data.as_bytes());
         let record = Record::new_provider_record(self.id(), key.clone(), self.ctx.time());
         self.file_storage.put(key.clone(), data);
@@ -231,6 +249,7 @@ impl Peer {
     /// * `key` - The key associated with the data to remove.
     pub fn remove_data(&mut self, key: Key) {
         if let (Some(_), Some(_)) = (self.dht_storage.get(&key), self.file_storage.get(&key)) {
+            self.log(Level::Info, &format!("Removed data by key \"{}\"", key));
             self.dht_storage.remove(&key);
             self.file_storage.remove(&key);
         }
@@ -246,6 +265,10 @@ impl Peer {
     ///
     /// The ID of the initiated query.
     pub fn retrieve_data(&mut self, key: Key) -> QueryId {
+        self.log(
+            Level::Info,
+            &format!("Initiated retrieving data by key \"{}\"", key),
+        );
         let query_id = self.get_value(key);
         self.ctx
             .emit_self(RetrieveDataQueryTimeout { query_id }, CONFIG.query_timeout);
@@ -304,6 +327,10 @@ impl Peer {
                     match query.trigger() {
                         QueryTrigger::PutValue(query_id) => {
                             if let Some(query) = self.queries.remove_put_value_query(query_id) {
+                                self.log(
+                                    Level::Debug,
+                                    &format!("Completed PutValueQuery with id={}", query_id),
+                                );
                                 self.stats.put_value_queries_completed += 1;
                                 for peer in peers {
                                     self.send_message(
@@ -334,6 +361,10 @@ impl Peer {
                     }
 
                     self.queries.remove_find_node_query(query_id);
+                    self.log(
+                        Level::Debug,
+                        &format!("Completed FindNodeQuery with id={}", query_id),
+                    );
                     self.stats.find_node_queries_completed += 1;
                 }
             }
@@ -347,6 +378,10 @@ impl Peer {
     /// * `query_id` - The ID of the query to remove.
     fn on_find_node_query_timeout(&mut self, query_id: QueryId) {
         if self.queries.remove_find_node_query(query_id).is_some() {
+            self.log(
+                Level::Warn,
+                &format!("FindNodeQuery with id={} timed out", query_id),
+            );
             self.stats.find_node_queries_failed += 1;
         }
     }
@@ -398,6 +433,10 @@ impl Peer {
     /// * `query_id` - The ID of the query to remove.
     fn on_get_value_query_timeout(&mut self, query_id: QueryId) {
         if self.queries.remove_get_value_query(query_id).is_some() {
+            self.log(
+                Level::Warn,
+                &format!("GetValueQuery with id={} timed out", query_id),
+            );
             self.stats.get_value_queries_failed += 1;
         }
     }
@@ -419,6 +458,10 @@ impl Peer {
     /// * `query_id` - The ID of the query to remove.
     fn on_put_value_query_timeout(&mut self, query_id: QueryId) {
         if self.queries.remove_put_value_query(query_id).is_some() {
+            self.log(
+                Level::Warn,
+                &format!("PutValueQuery with id={} timed out", query_id),
+            );
             self.stats.put_value_queries_failed += 1;
         }
     }
@@ -452,7 +495,7 @@ impl Peer {
         if let Some(data) = data {
             if self.queries.remove_retrieve_data_query(query_id) {
                 self.stats.retrieve_data_queries_completed += 1;
-                log_info!(self.ctx, "Data retrieved: {}", data);
+                self.log(Level::Info, &format!("Data retrieved: {}", data));
             }
         }
     }
@@ -464,6 +507,10 @@ impl Peer {
     /// * `query_id` - The ID of the query to remove.
     fn on_retrieve_data_query_timeout(&mut self, query_id: QueryId) {
         if self.queries.remove_retrieve_data_query(query_id) {
+            self.log(
+                Level::Warn,
+                &format!("RetrieveDataQuery with id={} timed out", query_id),
+            );
             self.stats.retrieve_data_queries_failed += 1;
         }
     }
@@ -509,9 +556,9 @@ impl Peer {
 
     /// Republishes the record associated with the given key.
     /// This method is called periodically to republish the record.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `key` - The key associated with the record to republish.
     fn on_republish_timer(&mut self, key: Key) {
         if let (Some(record), Some(_)) = (
@@ -523,6 +570,11 @@ impl Peer {
             self.ctx
                 .emit_self(RepublishTimer { key }, CONFIG.record_publication_interval);
         }
+    }
+
+    /// Logs a message with the current time and the name of the peer.
+    fn log(&self, level: Level, msg: &str) {
+        log::log!(target: "simulation",level, "[{:.3} {}] {}", self.ctx.time(), self.ctx.name(), msg);
     }
 }
 

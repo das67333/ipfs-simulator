@@ -1,3 +1,20 @@
+# available verbosity level filters of the logger
+# valid values are "off", "error", "warn", "info", "debug", "trace"
+log_level_filter = "info"
+# path to the log file
+# if it is not specified, stderr is used
+log_file_path = "test.log"
+
+# enable background generation of PublishData and RetrieveData queries
+# all user_block* parameters must be provided if this is enabled
+enable_user_load_generation = true
+# usize, length of the blocks in bytes
+user_load_block_size = 8
+# usize, number of total blocks used in user load generation
+user_load_blocks_pool_size = 1_000
+# f64, delay between generated events
+user_load_events_interval = 1.5
+
 # u64 seed for the random number generator
 seed = 42
 # usize, replication parameter
@@ -5,7 +22,7 @@ k = 20
 # usize, max number of concurrent requests of a peer
 alpha = 3
 # u32, max number of peers in the network
-num_peers = 100_000
+num_peers = 100
 # distribution of the delays between peers
 # valid values are 'constant', 'uniform', 'positive_normal'
 # if 'constant', the 'delay_mean' key should be provided

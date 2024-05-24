@@ -8,13 +8,13 @@ pub struct PutValueQuery {
 
 impl PutValueQuery {
     /// Creates a new `PutValueQuery` instance.
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `record` - The record to store.
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// A new `PutValueQuery` instance.
     pub fn new(record: Record) -> PutValueQuery {
         PutValueQuery {

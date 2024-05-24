@@ -1,4 +1,8 @@
-use crate::{network::NetworkAgent, peer::Peer, query::QueryTrigger, PeerId, CONFIG};
+use crate::{
+    network::{NetworkAgent, UserLoadGenerator},
+    peer::Peer,
+    PeerId, CONFIG,
+};
 use dslab_core::{Simulation, SimulationContext};
 use std::{cell::RefCell, rc::Rc};
 
@@ -8,9 +12,11 @@ pub struct App {
     peers: Vec<Rc<RefCell<Peer>>>,
     peer_ids: Vec<PeerId>,
     network: NetworkAgent,
+    user_load: Option<Rc<RefCell<UserLoadGenerator>>>,
 }
 
 impl App {
+    /// Creates a new `App` instance and adds the peers to the simulation.
     pub fn new() -> Self {
         let mut app = Self {
             sim: Simulation::new(CONFIG.seed),
@@ -20,11 +26,25 @@ impl App {
                 CONFIG.topology.clone(),
                 CONFIG.delay_distribution.clone(),
             ),
+            user_load: None,
         };
+        if let Some(path) = CONFIG.log_file_path.as_ref() {
+            simple_logging::log_to_file(path, CONFIG.log_level_filter).unwrap();
+        } else {
+            simple_logging::log_to_stderr(CONFIG.log_level_filter);
+        }
         app.add_peers();
+        if CONFIG.enable_user_load_generation {
+            app.user_load = Some(UserLoadGenerator::register(&mut app.sim, app.peers.clone()));
+        }
         app
     }
 
+    /// Changes the network filter of the application.
+    /// The filter is a function that takes the simulation context, the source peer ID, and the
+    /// destination peer ID, and returns the delay between the two peers.
+    ///
+    /// The initial network filter is retrieved from the configuration file.
     pub fn set_network_filter(
         &mut self,
         filter: impl FnMut(&SimulationContext, PeerId, PeerId) -> Option<f64> + 'static,
@@ -32,10 +52,13 @@ impl App {
         self.network = NetworkAgent::from_function(filter);
     }
 
+    /// Adds the peers to the simulation.
+    /// The number of peers is retrieved from the configuration file.
     fn add_peers(&mut self) {
         let n = CONFIG.num_peers;
+        let width = (n - 1).to_string().len();
         for i in 0..n {
-            let name = format!("peer-{}", i);
+            let name = format!("peer-{:01$}", i, width);
             let peer = Rc::new(RefCell::new(Peer::new(
                 &mut self.sim,
                 &name,
@@ -55,71 +78,18 @@ impl App {
         for peer in self.peers.iter() {
             stats.merge(&peer.borrow_mut().stats());
         }
-        println!("{:#?}", stats);
+        log::info!("{:#?}", stats);
     }
 
+    /// Runs the simulation.
+    /// You're expected to override this function to define the simulation scenario.
     pub fn run(&mut self) {
-        // let duration = std::env::var("DURATION")
-        //     .ok()
-        //     .and_then(|s| s.parse::<f64>().ok())
-        //     .unwrap();
-        const KEYS_CNT: usize = 10_000;
+        self.sim.step_until_time(CONFIG.kbuckets_refresh_interval);
+        // for peer in self.peers.iter() {
+        //     peer.borrow_mut().clear_storage();
+        // }
 
-        for i in 0..60 {
-            // [-0.35, 0.25]
-            let duration = (i - 35) as f64 * 0.01;
-            let blocks = (0..KEYS_CNT)
-                .map(|i| format!("file_{}", i))
-                .collect::<Vec<_>>();
-            let keys = blocks
-                .iter()
-                .map(|block| crate::Key::from_sha256(block.as_bytes()))
-                .collect::<Vec<_>>();
-
-            if duration >= 0. {
-                for block in blocks.iter().cloned() {
-                    self.peers[self.sim.gen_range(0..CONFIG.num_peers) as usize]
-                        .borrow_mut()
-                        .publish_data(block);
-                }
-                self.sim.step_until_time(self.sim.time() + duration);
-                for key in keys.iter().cloned() {
-                    self.peers[self.sim.gen_range(0..CONFIG.num_peers) as usize]
-                        .borrow_mut()
-                        .retrieve_data(key);
-                }
-            } else {
-                for key in keys.iter().cloned() {
-                    self.peers[self.sim.gen_range(0..CONFIG.num_peers) as usize]
-                        .borrow_mut()
-                        .retrieve_data(key);
-                }
-                self.sim.step_until_time(self.sim.time() - duration);
-                for block in blocks.iter().cloned() {
-                    self.peers[self.sim.gen_range(0..CONFIG.num_peers) as usize]
-                        .borrow_mut()
-                        .publish_data(block);
-                }
-            }
-
-            self.sim.step_until_no_events();
-            for peer in self.peers.iter() {
-                peer.borrow_mut().clear_storage();
-            }
-
-            // println!("Simulation time: {:.3} seconds", self.sim.time());
-            let mut stats = crate::query::QueriesStats::new();
-            for peer in self.peers.iter() {
-                stats.merge(&peer.borrow_mut().stats());
-            }
-            println!(
-                "{:.3} {} {} {}",
-                duration,
-                stats.retrieve_data_queries_started,
-                stats.retrieve_data_queries_completed,
-                stats.retrieve_data_queries_failed
-            );
-        }
+        self.summarize_stats();
     }
 }
 

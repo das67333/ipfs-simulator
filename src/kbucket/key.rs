@@ -14,6 +14,12 @@ construct_uint! {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Key(U256);
 
+impl std::fmt::Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:0>64x}", self.0)
+    }
+}
+
 /// A distance between two keys in the DHT keyspace.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Distance(U256);

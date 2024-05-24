@@ -118,7 +118,8 @@ impl LocalDHTStorage {
     ///
     /// * `curr_time` - The current simulation time.
     pub fn remove_expired(&mut self, curr_time: f64) {
-        self.records.retain(|_, record| record.expires_at > curr_time);
+        self.records
+            .retain(|_, record| record.expires_at > curr_time);
     }
 
     /// Clears the storage, removing all records.

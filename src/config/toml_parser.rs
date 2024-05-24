@@ -4,6 +4,12 @@ use std::path::Path;
 /// Represents the structure to parse the configuration file into.
 #[derive(Debug, Deserialize)]
 pub struct ConfigTOML {
+    pub log_level_filter: String,
+    pub log_file_path: Option<String>,
+    pub enable_user_load_generation: bool,
+    pub user_load_block_size: Option<usize>,
+    pub user_load_blocks_pool_size: Option<usize>,
+    pub user_load_events_interval: Option<f64>,
     pub seed: u64,
     pub k: usize,
     pub alpha: usize,

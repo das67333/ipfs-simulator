@@ -2,7 +2,7 @@ use rand::distributions::{Distribution, Uniform};
 use rand_distr::Normal;
 
 /// Represents the distribution of delay values.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum DelayDistribution {
     /// Represents a constant delay value.
     Constant(f64),
