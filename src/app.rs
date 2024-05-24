@@ -73,6 +73,7 @@ impl App {
         }
     }
 
+    /// Extracts the statistics from the peers and logs them.
     pub fn summarize_stats(&self) {
         let mut stats = crate::query::QueriesStats::new();
         for peer in self.peers.iter() {

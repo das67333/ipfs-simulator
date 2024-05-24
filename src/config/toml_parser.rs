@@ -36,3 +36,13 @@ impl ConfigTOML {
         toml::from_str(&data).expect("Failed to parse config")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_file() {
+        let _config = ConfigTOML::from_file("config.toml");
+    }
+}

@@ -102,6 +102,12 @@ impl std::ops::Not for Distance {
     }
 }
 
+impl std::fmt::Debug for Distance {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:0>64x}", self.0)
+    }
+}
+
 /// A tree structure for efficiently finding the closest keys to a given key.
 pub struct KeysTree {
     root: Option<KeysTreeNode>,
@@ -259,5 +265,48 @@ impl KeysTree {
             .iter()
             .map(|key| *PEER_ID_BY_KEY.get(key).expect("Got unexpected key"))
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_random_key() {
+        let ctx = dslab_core::Simulation::new(0).create_context("ctx");
+        let key1 = Key::random(&ctx);
+        let key2 = Key::random(&ctx);
+        assert_ne!(key1, key2);
+    }
+
+    #[test]
+    fn test_distance() {
+        let key1 = Key(U256::from(123));
+        let key2 = Key(U256::from(456));
+        let distance = key1.distance(&key2);
+        assert_eq!(distance, Distance(U256::from(435)));
+    }
+
+    #[test]
+    fn test_for_distance() {
+        let key1 = Key(U256::from(123));
+        let distance = Distance(U256::from(456));
+        let key2 = key1.for_distance(distance);
+        assert_eq!(key2, Key(U256::from(435)));
+    }
+
+    #[test]
+    fn test_from_sha256() {
+        let bytes = b"hello world";
+        let key = Key::from_sha256(bytes);
+        assert_eq!(
+            key,
+            Key(U256::from_str_radix(
+                "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+                16
+            )
+            .unwrap())
+        );
     }
 }

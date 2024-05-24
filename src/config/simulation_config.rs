@@ -138,3 +138,13 @@ impl SimulationConfig {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_default_config_file() {
+        let _config = SimulationConfig::from_default_config_file();
+    }
+}

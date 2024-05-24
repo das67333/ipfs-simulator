@@ -141,3 +141,75 @@ impl KBucketsTable {
         true
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_local_closest_peers_approximate() {
+        let local_key = Key::from_sha256(b"bytes");
+        let mut table = KBucketsTable::new(&local_key);
+
+        // Add some peers to the table
+        table.add_peer(1, 0.0);
+        table.add_peer(2, 0.0);
+        table.add_peer(3, 0.0);
+        table.add_peer(4, 0.0);
+        table.add_peer(5, 0.0);
+
+        // Test with count = 3
+        let closest_peers = table.local_closest_peers_approximate(&Key::from_sha256(b"first"), 3);
+        assert!([2, 3, 4].iter().any(|id| closest_peers.contains(id)));
+
+        // Test with count = 5
+        let closest_peers = table.local_closest_peers_approximate(&Key::from_sha256(b"all"), 5);
+        assert_eq!(closest_peers.len(), 5);
+
+        // Test with count = 10 (more than available peers)
+        let closest_peers = table.local_closest_peers_approximate(&Key::from_sha256(b"all"), 10);
+        assert_eq!(closest_peers.len(), 5);
+    }
+
+    #[test]
+    fn test_local_closest_peers_precise() {
+        let local_key = Key::from_sha256(b"bytes");
+        let mut table = KBucketsTable::new(&local_key);
+
+        // Add some peers to the table
+        table.add_peer(1, 0.0);
+        table.add_peer(2, 0.0);
+        table.add_peer(3, 0.0);
+        table.add_peer(4, 0.0);
+        table.add_peer(5, 0.0);
+
+        // Test with count = 3
+        let closest_peers = table.local_closest_peers_precise(&Key::from_sha256(b"first"), 3);
+        assert_eq!(closest_peers, vec![2, 3, 4]);
+
+        // Test with count = 5
+        let closest_peers = table.local_closest_peers_precise(&Key::from_sha256(b"all"), 5);
+        assert_eq!(closest_peers.len(), 5);
+
+        // Test with count = 10 (more than available peers)
+        let closest_peers = table.local_closest_peers_precise(&Key::from_sha256(b"all"), 10);
+        assert_eq!(closest_peers.len(), 5);
+    }
+
+    #[test]
+    fn test_add_peer() {
+        let local_key = Key::from_sha256(&2u32.to_le_bytes());
+        let mut table = KBucketsTable::new(&local_key);
+
+        // Add a peer to an empty table
+        assert_eq!(table.add_peer(1, 0.0), true);
+
+        // Add a peer with the same key as the local key
+        assert_eq!(table.add_peer(2, 0.0), false);
+
+        assert_eq!(table.add_peer(3, 0.0), true);
+        assert_eq!(table.add_peer(4, 0.0), true);
+        assert_eq!(table.add_peer(3, 1.0), true);
+        assert_eq!(table.add_peer(5, 2.0), true);
+    }
+}
